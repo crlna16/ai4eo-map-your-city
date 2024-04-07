@@ -1,5 +1,4 @@
 _target_: ai4eo_mapyourcity.models.vision_transformer.VisionTransformerPretrained
-lr: 0.001
-weight_decay: 0.0005
+learning_rate: 0.001
 model: vit_b_16
 num_classes: 7

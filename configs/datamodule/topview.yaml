@@ -1,7 +1,0 @@
-_target_: ai4eo_mapyourcity.datamodules.topview_module.TopViewDataModule
-
-data_dir: ${data_dir} # data_dir is specified in config.yaml
-batch_size: 16
-num_workers: 0
-pin_memory: False
-valid_size : 2

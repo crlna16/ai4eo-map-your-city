@@ -3,7 +3,7 @@
 # specify here default training configuration
 defaults:
   - _self_
-  - datamodule: topview.yaml
+  - datamodule: mapyourcity.yaml
   - model: vision_transformer.yaml
   - callbacks: default.yaml
   - logger: tensorboard.yaml # set logger here or use command line (e.g. `python train.py logger=tensorboard`)
@@ -35,8 +35,14 @@ original_work_dir: ${hydra:runtime.cwd}
 
 # path to folder with data
 
-data_dir: ${original_work_dir}/data/
+data_dir: ${original_work_dir}/data/AI4EO-MapYourCity/v1/building-age-dataset/
 
+# cross-validation fold
+fold: 0
+fold_dir: ${original_work_dir}/data/AI4EO-MapYourCity/splits/
+
+# checkpoint path to resume training
+ckpt_path: None
 
 # pretty print config at the start of the run using Rich library
 print_config: True
