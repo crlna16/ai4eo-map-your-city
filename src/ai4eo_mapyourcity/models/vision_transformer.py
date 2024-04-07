@@ -7,10 +7,9 @@ from torch import optim
 from transformers import ViTForImageClassification
 import torchmetrics
 
+from pytorch_lightning import LightningModule
 
-import lightning as L
-
-class VisionTransformerPretrained(L.LightningModule):
+class VisionTransformerPretrained(LightningModule):
     '''
     Wrapper for the torchvision pretrained Vision Transformers
 

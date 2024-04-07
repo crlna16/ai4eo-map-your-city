@@ -3,75 +3,119 @@
 import torch
 import numpy as np
 import os
+import pandas as pd
 
-from sklearn.model_selection import train_test_split
-
-from torchvision.datasets import ImageFolder
 from torchvision.transforms import v2
 
 import lightning as L
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader, Dataset
 
-class TopViewDataModule(L.LightningDataModule):
+from matplotlib import pyplot as plt
+
+class MapYourCityDataset(Dataset):
     '''
-    Lightning datamodule for the Country211 dataset
+    Dataset for MapYourCity data
+
+    Arguments:
+      data_path (str) : data root path
+      csv_path (str) : csv file describing the split
+      img_type (str) : choice of ['streetview', 'topview', 'sentinel-2']
+      transform (str) : choice of ['resize', 'center_crop', 'random_crop', 'none']
+      target_size (int) : target image size
 
     '''
-
-    def __init__(self, data_root, batch_size, valid_size=2700):
+    def __init__(self, data_path, csv_path, img_type, transform, target_size):
         super().__init__()
 
-        self.data_root = data_root
+        self.img_type = img_type
+        self.label_file = 'label.txt'
+
+        match self.img_type:
+            case 'streetview':
+                self.img_file = 'street.jpg'
+            case 'topview':
+                self.img_file = 'orthophoto.tif'
+            case 'sentinel-2':
+                self.img_file = 's2_l2a.tif'
+            case _:
+                raise ValueError('Invalid choice:', self.img_type)
+
+        # assign transforms
+        match transform:
+            case 'resize':
+                self.transforms = v2.Compose([v2.ToImage(),
+                                      v2.Resize(size=(target_size, target_size), interpolation=2),
+                                      v2.ToDtype(torch.float32, scale=True),
+                                      v2.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+                                      ])
+            case 'center_crop':
+                self.transforms = v2.Compose([v2.ToImage(),
+                                      v2.CenterCrop(size=target_size),
+                                      v2.ToDtype(torch.float32, scale=True),
+                                      v2.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+                                      ])
+            case 'random_crop':
+                self.transforms = v2.Compose([v2.ToImage(),
+                                      v2.RandomCrop(size=target_size),
+                                      v2.ToDtype(torch.float32, scale=True),
+                                      v2.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+                                      ])
+            case 'none':
+                self.transforms = v2.Compose([v2.ToImage(),
+                                      v2.ToDtype(torch.float32, scale=True),
+                                      ])
+            case _:
+                raise ValueError('Invalid choice:', transform)
+
+
+        df = pd.read_csv(csv_path)
+
+        self.pids = df['pid'].values
+        self.labels = df['label'].values
+
+        self.image_paths = [os.path.join(data_path, pid, self.img_file) for pid in self.pids]
+
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        img = self.transforms(plt.imread(self.image_paths[idx]))
+        label = self.labels[idx]
+
+        return img, label
+
+class MapYourCityDataModule(L.LightningDataModule):
+    def __init__(self,
+                 data_dir, fold, fold_dir, batch_size, num_workers,
+                 pin_memory, img_type, transform, target_size):
+        super().__init__()
+
+        self.data_dir = data_dir
+        self.fold = fold
+        self.fold_dir = fold_dir
         self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.pin_memory = pin_memory
 
-        self.num_workers = 8
-        self.valid_size = valid_size
+        self.img_type = img_type
+        self.transform = transform
+        self.target_size = target_size
 
-    @property
-    def num_classes(self):
-        return 10
+    def setup(self, stage='fit'):
+        '''
+        Train, valid and test data
+        '''
+        self.train_data = MapYourCityDataset(os.path.join(self.data_dir, 'train', 'data'),
+                                             os.path.join(self.fold_dir, f'split_train_{self.fold}.csv'),
+                                             self.img_type, self.transform, self.target_size)
+        self.valid_data = MapYourCityDataset(os.path.join(self.data_dir, 'train', 'data'),
+                                             os.path.join(self.fold_dir, f'split_valid_{self.fold}.csv'),
+                                             self.img_type, self.transform, self.target_size)
+        self.test_data = [] # TODO
 
     def prepare_data(self):
-        '''
-        Download the data manually
-
-        https://zenodo.org/records/7711810#.ZAm3k-zMKEA
-        '''
-        assert os.path.exists(self.data_root), print('Download URL: https://zenodo.org/records/7711810#.ZAm3k-zMKEA')
-
-    def setup(self):
-        '''
-        Setup the dataset
-
-        '''
-
-        # define the transforms
-        # - resize to (224, 224) as expected for ViT
-        # - scale to [0,1] and transform to float32
-        # - normalize with ViT mean/std
-
-        transforms = v2.Compose([v2.ToImage(),
-                                 v2.Resize(size=(224,224), interpolation=2),
-                                 v2.ToDtype(torch.float32, scale=True),
-                                 v2.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
-                                ])
-
-        data = ImageFolder(self.data_root, transform=transforms)
-        targets = np.asarray(data.targets)
-
-        print(data)
-        print('Total number of samples: ', len(targets))
-
-        tmp_ix, test_ix = train_test_split(np.arange(len(targets)), test_size=5400, stratify=targets)
-        train_ix, valid_ix = train_test_split(tmp_ix, test_size=self.valid_size, stratify=targets[tmp_ix])
-                                
-        self.train_data = Subset(data, train_ix)
-        self.valid_data = Subset(data, valid_ix)
-        self.test_data = Subset(data, test_ix)
-
-        print(f'Training samples: {len(self.train_data)}')
-        print(f'Validation samples: {len(self.valid_data)}')
-        print(f'Test samples: {len(self.test_data)}')
+        pass
 
     def train_dataloader(self):
         return DataLoader(dataset=self.train_data, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True)

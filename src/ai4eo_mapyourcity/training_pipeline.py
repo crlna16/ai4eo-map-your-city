@@ -3,7 +3,7 @@ from typing import List, Optional
 
 import hydra
 from omegaconf import DictConfig
-from pytorch_lightning import (
+from lightning import (
     Callback,
     LightningDataModule,
     LightningModule,
@@ -78,11 +78,18 @@ def train(config: DictConfig) -> Optional[float]:
         callbacks=callbacks,
         logger=logger,
     )
+    
+    log.info("Setup datamodule")
+
+    datamodule.prepare_data()
+    datamodule.setup()
 
     # Train the model
     if config.get("train"):
         log.info("Starting training!")
-        trainer.fit(model=model, datamodule=datamodule)
+        train_dataloader = datamodule.train_dataloader()
+        valid_dataloader = datamodule.valid_dataloader()
+        trainer.fit(model=model, train_dataloaders=train_dataloader, val_dataloaders=valid_dataloader)
 
     # Get metric score for hyperparameter optimization
     optimized_metric = config.get("optimized_metric")
