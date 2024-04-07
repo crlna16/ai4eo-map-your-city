@@ -108,6 +108,9 @@ def train(config: DictConfig) -> Optional[float]:
         log.info("Starting testing!")
         trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
 
+    # Make predictions and store
+    # TODO
+
     # Make sure everything closed properly
     log.info("Finalizing!")
     utils.finish(

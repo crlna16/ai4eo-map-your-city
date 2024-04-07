@@ -74,13 +74,14 @@ class MapYourCityDataset(Dataset):
         self.labels = df['label'].values
 
         self.image_paths = [os.path.join(data_path, pid, self.img_file) for pid in self.pids]
+        self.images = [self.transforms(plt.imread(imp)) for imp in self.image_paths]
 
 
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        img = self.transforms(plt.imread(self.image_paths[idx]))
+        img = self.images[idx]
         label = self.labels[idx]
 
         return img, label
