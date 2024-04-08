@@ -1,8 +1,8 @@
 _target_: ai4eo_mapyourcity.datamodules.mapyourcity_datamodule.MapYourCityDataModule
 
 data_dir: ${data_dir} # data_dir is specified in train.yaml
-batch_size: 16
-num_workers: 0
+batch_size: 64
+num_workers: 8
 pin_memory: False
 fold: ${fold} # is specified in train.yaml
 fold_dir: ${fold_dir}

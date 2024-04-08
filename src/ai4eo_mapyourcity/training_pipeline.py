@@ -12,6 +12,7 @@ from lightning import (
 )
 from pytorch_lightning.loggers.logger import Logger
 from ai4eo_mapyourcity import utils
+import pandas as pd
 
 log = utils.get_logger(__name__)
 
@@ -91,6 +92,13 @@ def train(config: DictConfig) -> Optional[float]:
         valid_dataloader = datamodule.valid_dataloader()
         trainer.fit(model=model, train_dataloaders=train_dataloader, val_dataloaders=valid_dataloader)
 
+        # save predictions for validation set
+        trainer.predict(model=model, dataloaders=valid_dataloader, ckpt_path=ckpt_path)
+
+        valid_predictions = pd.DataFrame(model.valid_predictions)
+        valid_predictions.to_csv(f'valid_predictions_fold_{datamodule.fold}.csv', index=False)
+
+
     # Get metric score for hyperparameter optimization
     optimized_metric = config.get("optimized_metric")
     if optimized_metric and optimized_metric not in trainer.callback_metrics:
@@ -106,10 +114,11 @@ def train(config: DictConfig) -> Optional[float]:
         if not config.get("train") or config.trainer.get("fast_dev_run"):
             ckpt_path = None
         log.info("Starting testing!")
-        trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
+        test_dataloader = datamodule.test_dataloader()
+        trainer.test(model=model, dataloaders=test_dataloader, ckpt_path=ckpt_path)
 
-    # Make predictions and store
-    # TODO
+        test_predictions = pd.DataFrame(model.test_predictions)
+        test_predictions.to_csv(f'test_predictions_fold_{datamodule.fold}.csv', index=False)
 
     # Make sure everything closed properly
     log.info("Finalizing!")

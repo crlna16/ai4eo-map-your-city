@@ -31,7 +31,7 @@ defaults:
 # path to original working directory
 # hydra hijacks working directory by changing it to the new log directory
 # https://hydra.cc/docs/next/tutorials/basic/running_your_app/working_directory
-original_work_dir: ${hydra:runtime.cwd}
+original_work_dir: ${hydra:runtime.cwd}/..
 
 # path to folder with data
 

@@ -23,6 +23,9 @@ class VisionTransformerPretrained(LightningModule):
     def __init__(self, model, num_classes, learning_rate):
 
         super().__init__()
+        # this line allows to access init params with 'self.hparams' attribute
+        # it also ensures init params will be stored in ckpt
+        self.save_hyperparameters(logger=False)
 
         if model == 'vit_b_16':
             backbone = ViTForImageClassification.from_pretrained("google/vit-base-patch16-224", num_labels=num_classes, ignore_mismatched_sizes=True)
@@ -37,6 +40,11 @@ class VisionTransformerPretrained(LightningModule):
         # other
         self.learning_rate = learning_rate
 
+        # store predictions
+        self.valid_predictions = {'pid': [], 'predicted_labels': []}
+        self.test_predictions = {'pid': [], 'predicted_labels': []}
+
+
     def forward(self, x):
         return self.backbone(x)
 
@@ -45,17 +53,17 @@ class VisionTransformerPretrained(LightningModule):
        Any step processes batch to return loss and predictions
        '''
 
-       x, y = batch
+       x, y, pid = batch
        prediction = self.backbone(x)
        y_hat = torch.argmax(prediction.logits, dim=-1)
 
        loss = F.cross_entropy(prediction.logits, y)
        acc = self.acc(y_hat, y)
        
-       return loss, acc, y_hat, y
+       return loss, acc, y_hat, y, pid
 
     def training_step(self, batch, batch_idx):
-        loss, acc, y_hat, y = self.step(batch)
+        loss, acc, _, _, _ = self.step(batch)
 
         self.log('train_loss', loss)
         self.log('train_acc', acc)
@@ -63,13 +71,22 @@ class VisionTransformerPretrained(LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        loss, acc, y_hat, y = self.step(batch)
+        loss, acc, _, _, _ = self.step(batch)
 
         self.log('valid_loss', loss, on_epoch=True, on_step=False, sync_dist=True)
         self.log('valid_acc', acc, on_epoch=True, on_step=False, sync_dist=True)
 
+    def predict_step(self, batch, batch_idx):
+        loss, acc, y_hat, y, pid = self.step(batch)
+
+        self.valid_predictions['pid'].extend(list(pid))
+        self.valid_predictions['predicted_labels'].extend(list(y_hat.squeeze().cpu().numpy()))
+
     def test_step(self, batch, batch_idx):
-        loss, acc, y_hat, y = self.step(batch)
+        loss, acc, y_hat, y, pid = self.step(batch)
+
+        self.test_predictions['pid'].extend(list(pid))
+        self.test_predictions['predicted_labels'].extend(list(y_hat.squeeze().cpu().numpy()))
 
         self.log('test_loss', loss, on_epoch=True, on_step=False, sync_dist=True)
         self.log('test_acc', acc, on_epoch=True, on_step=False, sync_dist=True)

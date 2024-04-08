@@ -10,7 +10,7 @@ from torchvision.transforms import v2
 import lightning as L
 from torch.utils.data import DataLoader, Dataset
 
-from matplotlib import pyplot as plt
+from PIL import Image
 
 class MapYourCityDataset(Dataset):
     '''
@@ -71,20 +71,31 @@ class MapYourCityDataset(Dataset):
         df = pd.read_csv(csv_path)
 
         self.pids = df['pid'].values
-        self.labels = df['label'].values
+
+        if 'label' in df.columns:
+            self.labels = df['label'].values
+        else: # test stage
+            self.labels = [0] * len(self.pids)
 
         self.image_paths = [os.path.join(data_path, pid, self.img_file) for pid in self.pids]
-        self.images = [self.transforms(plt.imread(imp)) for imp in self.image_paths]
+        #self.images = [self.transforms(plt.imread(imp)) for imp in self.image_paths]
 
+    def loader(self, path):
+        with open(path, "rb") as f:
+            img = Image.open(f)
+            img.load()
+
+            return img.convert("RGB")
 
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        img = self.images[idx]
+        img = self.transforms( self.loader( self.image_paths[idx] ) )
         label = self.labels[idx]
+        pid = self.pids[idx]
 
-        return img, label
+        return img, label, pid
 
 class MapYourCityDataModule(L.LightningDataModule):
     def __init__(self,
@@ -113,7 +124,9 @@ class MapYourCityDataModule(L.LightningDataModule):
         self.valid_data = MapYourCityDataset(os.path.join(self.data_dir, 'train', 'data'),
                                              os.path.join(self.fold_dir, f'split_valid_{self.fold}.csv'),
                                              self.img_type, self.transform, self.target_size)
-        self.test_data = [] # TODO
+        self.test_data = MapYourCityDataset(os.path.join(self.data_dir, 'test', 'data'),
+                                             os.path.join(self.data_dir, 'test',  f'test-set.csv'),
+                                             self.img_type, self.transform, self.target_size)
 
     def prepare_data(self):
         pass
