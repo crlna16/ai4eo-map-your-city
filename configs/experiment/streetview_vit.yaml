@@ -6,6 +6,7 @@
 defaults:
   - override /datamodule: mapyourcity.yaml
   - override /model: vision_transformer.yaml
+  - override /trainer: default.yaml
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
