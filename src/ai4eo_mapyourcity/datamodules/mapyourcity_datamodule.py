@@ -78,7 +78,13 @@ class MapYourCityDataset(Dataset):
             self.labels = [0] * len(self.pids)
 
         self.image_paths = [os.path.join(data_path, pid, self.img_file) for pid in self.pids]
-        #self.images = [self.transforms(plt.imread(imp)) for imp in self.image_paths]
+
+        # not all folders have a streetview image
+        if self.img_type == 'streetview':
+            is_valid = [os.path.exists(imp) for imp in self.image_paths]
+            self.pids = [self.pids[i] for i in range(len(self.pids)) if is_valid[i]]
+            self.labels = [self.labels[i] for i in range(len(self.labels)) if is_valid[i]]
+            self.image_paths = [self.image_paths[i] for i in range(len(self.image_paths)) if is_valid[i]]
 
     def loader(self, path):
         with open(path, "rb") as f:

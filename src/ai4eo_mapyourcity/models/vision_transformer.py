@@ -41,8 +41,8 @@ class VisionTransformerPretrained(LightningModule):
         self.learning_rate = learning_rate
 
         # store predictions
-        self.valid_predictions = {'pid': [], 'predicted_labels': []}
-        self.test_predictions = {'pid': [], 'predicted_labels': []}
+        self.valid_predictions = {'pid': [], 'predicted_label': []}
+        self.test_predictions = {'pid': [], 'predicted_label': []}
 
 
     def forward(self, x):
@@ -80,13 +80,13 @@ class VisionTransformerPretrained(LightningModule):
         loss, acc, y_hat, y, pid = self.step(batch)
 
         self.valid_predictions['pid'].extend(list(pid))
-        self.valid_predictions['predicted_labels'].extend(list(y_hat.squeeze().cpu().numpy()))
+        self.valid_predictions['predicted_label'].extend(list(y_hat.squeeze().cpu().numpy()))
 
     def test_step(self, batch, batch_idx):
         loss, acc, y_hat, y, pid = self.step(batch)
 
         self.test_predictions['pid'].extend(list(pid))
-        self.test_predictions['predicted_labels'].extend(list(y_hat.squeeze().cpu().numpy()))
+        self.test_predictions['predicted_label'].extend(list(y_hat.squeeze().cpu().numpy()))
 
         self.log('test_loss', loss, on_epoch=True, on_step=False, sync_dist=True)
         self.log('test_acc', acc, on_epoch=True, on_step=False, sync_dist=True)
