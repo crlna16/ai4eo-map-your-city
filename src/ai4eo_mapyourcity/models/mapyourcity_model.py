@@ -9,14 +9,17 @@ import torchmetrics
 
 from pytorch_lightning import LightningModule
 
-class VisionTransformerPretrained(LightningModule):
+class MapYourCityModel(LightningModule):
     '''
-    Wrapper for the torchvision pretrained Vision Transformers
+    Wrapper for the MapYourCity models
+    - torchvision pretrained Vision Transformers / SWIN
 
     Args:
       model (str)       : specifies which flavor of ViT to use
       num_classes (int) : number of output classes
       learning_rate (float) : optimizer learning rate
+      weighted_loss (bool) : if True, apply class_weights in CE loss
+      class_weights (dict) : class weights for CE loss
 
     '''
 

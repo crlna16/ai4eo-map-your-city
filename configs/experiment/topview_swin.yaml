@@ -12,6 +12,14 @@ defaults:
 # this allows you to overwrite only specified parameters
 
 # name of the run determines folder name in logs
-name: "topview_vit"
+name: "topview_swin"
 
 seed: 404
+
+model:
+  model: microsoft/swin-base-patch4-window12-384
+  weighted_loss: True
+
+datamodule:
+  target_size: 384
+  batch_size: 32

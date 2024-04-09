@@ -12,6 +12,12 @@ defaults:
 # this allows you to overwrite only specified parameters
 
 # name of the run determines folder name in logs
-name: "topview_vit"
+name: "topview_vit_base-32-384"
 
 seed: 404
+
+model:
+  model: google/vit-base-patch32-384
+
+datamodule:
+  target_size: 384
