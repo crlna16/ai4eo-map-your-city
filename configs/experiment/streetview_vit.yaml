@@ -12,10 +12,13 @@ defaults:
 # this allows you to overwrite only specified parameters
 
 # name of the run determines folder name in logs
-name: "streetview_vit"
+name: "streetview_vit_weighted"
 
 seed: 404
 
+model:
+  weighted_loss: True
+
 datamodule:
   img_type: streetview
-  transform: resize
+  transform: center_crop

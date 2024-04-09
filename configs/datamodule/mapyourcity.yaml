@@ -9,3 +9,4 @@ fold_dir: ${fold_dir}
 img_type: topview
 transform: center_crop
 target_size: 224
+sentinel2_mode: rgb

@@ -12,14 +12,15 @@ defaults:
 # this allows you to overwrite only specified parameters
 
 # name of the run determines folder name in logs
-name: "topview_swin"
+name: "sentinel2_rgb_vit"
 
 seed: 404
 
 model:
-  model: microsoft/swinv2-tiny-patch4-window8-256
+  model: google/vit-base-patch32-384
   weighted_loss: True
 
 datamodule:
-  target_size: 256
-  batch_size: 32
+  img_type: sentinel-2
+  sentinel2_mode: rgb
+  target_size: 384

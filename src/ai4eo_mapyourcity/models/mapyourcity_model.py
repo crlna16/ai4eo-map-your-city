@@ -3,8 +3,9 @@ from typing import Any, List
 import torch
 from torch.nn import functional as F
 from torch import optim
+from torch.nn import Linear
 
-from transformers import ViTForImageClassification, AutoModelForImageClassification
+from transformers import ViTForImageClassification, SwinForImageClassification
 import torchmetrics
 
 from pytorch_lightning import LightningModule
@@ -33,7 +34,7 @@ class MapYourCityModel(LightningModule):
         if model.startswith('google/vit'):
             backbone = ViTForImageClassification.from_pretrained(model, num_labels=num_classes, ignore_mismatched_sizes=True)
         elif model.startswith('microsoft/swin'):
-            backbone = AutoModelForImageClassification.from_pretrained(model, num_labels=num_classes, ignore_mismatched_sizes=True)
+            backbone = SwinForImageClassification.from_pretrained(model, num_labels=num_classes, ignore_mismatched_sizes=True)
 
         self.backbone = backbone
 
