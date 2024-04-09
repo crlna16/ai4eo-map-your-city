@@ -1,5 +1,13 @@
 _target_: ai4eo_mapyourcity.models.vision_transformer.VisionTransformerPretrained
 learning_rate: 0.001
-model: vit_b_16
 num_classes: 7
-
+model: google/vit-base-patch16-224
+weighted_loss: False
+class_weights:
+  '0' : 0.0647
+  '1' : 0.158
+  '2' : 0.160
+  '3' : 0.140
+  '4' : 0.116
+  '5' : 0.143
+  '6' : 0.219

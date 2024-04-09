@@ -4,7 +4,7 @@ import torch
 from torch.nn import functional as F
 from torch import optim
 
-from transformers import ViTForImageClassification
+from transformers import ViTForImageClassification, AutoModelForImageClassification
 import torchmetrics
 
 from pytorch_lightning import LightningModule
@@ -20,22 +20,24 @@ class VisionTransformerPretrained(LightningModule):
 
     '''
 
-    def __init__(self, model, num_classes, learning_rate):
+    def __init__(self, model, num_classes, learning_rate, weighted_loss, class_weights):
 
         super().__init__()
         # this line allows to access init params with 'self.hparams' attribute
         # it also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
 
-        if model == 'vit_b_16':
-            backbone = ViTForImageClassification.from_pretrained("google/vit-base-patch16-224", num_labels=num_classes, ignore_mismatched_sizes=True)
-        else:
-            raise ValueError(model)
+        if model.startswith('google/vit'):
+            backbone = ViTForImageClassification.from_pretrained(model, num_labels=num_classes, ignore_mismatched_sizes=True)
+        elif model.startswith('microsoft/swin'):
+            backbone = AutoModelForImageClassification.from_pretrained(model, num_labels=num_classes, ignore_mismatched_sizes=True)
 
         self.backbone = backbone
 
         # metrics
         self.acc = torchmetrics.Accuracy('multiclass', num_classes=num_classes)
+        self.weighted_loss = weighted_loss
+        self.class_weights = torch.Tensor(list(class_weights.values())).to('cuda')
 
         # other
         self.learning_rate = learning_rate
@@ -57,7 +59,10 @@ class VisionTransformerPretrained(LightningModule):
        prediction = self.backbone(x)
        y_hat = torch.argmax(prediction.logits, dim=-1)
 
-       loss = F.cross_entropy(prediction.logits, y)
+       if self.weighted_loss:
+           loss = F.cross_entropy(prediction.logits, y, weight=self.class_weights)
+       else:
+           loss = F.cross_entropy(prediction.logits, y)
        acc = self.acc(y_hat, y)
        
        return loss, acc, y_hat, y, pid
