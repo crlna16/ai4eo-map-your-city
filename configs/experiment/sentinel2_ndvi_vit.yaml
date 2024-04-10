@@ -17,10 +17,11 @@ name: "sentinel2_ndvi_vit"
 seed: 404
 
 model:
-  model: google/vit-base-patch32-384
+  model: google/vit-base-patch16-224
   weighted_loss: True
 
 datamodule:
   img_type: sentinel-2
   sentinel2_mode: ndvi
-  target_size: 384
+  transform: center_crop
+  target_size: 224

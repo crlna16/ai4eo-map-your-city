@@ -24,14 +24,24 @@ class MapYourCityDataset(Dataset):
       transform (str) : choice of ['resize', 'center_crop', 'random_crop', 'none']
       target_size (int) : target image size
       sentinel2_mode (str) : choice of ['rgb', 'ndvi']
+      augment (float) : probability for data augmentation (default: 0.0)
 
     '''
-    def __init__(self, data_path, csv_path, img_type, transform, target_size, sentinel2_mode):
+    def __init__(self,
+                 data_path,
+                 csv_path,
+                 img_type,
+                 transform,
+                 target_size,
+                 sentinel2_mode,
+                 augment=0.0
+                 ):
         super().__init__()
 
         self.img_type = img_type
         self.label_file = 'label.txt'
         self.sentinel2_mode = sentinel2_mode
+        self.augment = augment
 
         match self.img_type:
             case 'streetview':
@@ -54,18 +64,24 @@ class MapYourCityDataset(Dataset):
             case 'resize':
                 self.transforms = v2.Compose([v2.ToImage(),
                                       v2.Resize(size=(target_size, target_size), interpolation=2),
+                                      v2.RandomHorizontalFlip(p=self.augment),
+                                      v2.RandomVerticalFlip(p=self.augment),
                                       v2.ToDtype(torch.float32, scale=True),
                                       v2.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
                                       ])
             case 'center_crop':
                 self.transforms = v2.Compose([v2.ToImage(),
                                       v2.CenterCrop(size=target_size),
+                                      v2.RandomHorizontalFlip(p=self.augment),
+                                      v2.RandomVerticalFlip(p=self.augment),
                                       v2.ToDtype(torch.float32, scale=True),
                                       v2.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
                                       ])
             case 'random_crop':
                 self.transforms = v2.Compose([v2.ToImage(),
                                       v2.RandomCrop(size=target_size),
+                                      v2.RandomHorizontalFlip(p=self.augment),
+                                      v2.RandomVerticalFlip(p=self.augment),
                                       v2.ToDtype(torch.float32, scale=True),
                                       v2.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
                                       ])
@@ -133,7 +149,8 @@ class MapYourCityDataset(Dataset):
 class MapYourCityDataModule(L.LightningDataModule):
     def __init__(self,
                  data_dir, fold, fold_dir, batch_size, num_workers,
-                 pin_memory, img_type, transform, target_size, sentinel2_mode):
+                 pin_memory, img_type, transform, target_size, sentinel2_mode,
+                 augment):
         super().__init__()
 
         self.data_dir = data_dir
@@ -142,11 +159,12 @@ class MapYourCityDataModule(L.LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.pin_memory = pin_memory
-        self.sentinel2_mode = sentinel2_mode
 
         self.img_type = img_type
         self.transform = transform
         self.target_size = target_size
+        self.sentinel2_mode = sentinel2_mode
+        self.augment = augment
 
     def setup(self, stage='fit'):
         '''
@@ -154,7 +172,8 @@ class MapYourCityDataModule(L.LightningDataModule):
         '''
         self.train_data = MapYourCityDataset(os.path.join(self.data_dir, 'train', 'data'),
                                              os.path.join(self.fold_dir, f'split_train_{self.fold}.csv'),
-                                             self.img_type, self.transform, self.target_size, self.sentinel2_mode)
+                                             self.img_type, self.transform, self.target_size, self.sentinel2_mode,
+                                             self.augment)
         self.valid_data = MapYourCityDataset(os.path.join(self.data_dir, 'train', 'data'),
                                              os.path.join(self.fold_dir, f'split_valid_{self.fold}.csv'),
                                              self.img_type, self.transform, self.target_size, self.sentinel2_mode)
