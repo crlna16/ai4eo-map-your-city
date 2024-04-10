@@ -17,7 +17,7 @@ name: "streetview_vit_augment"
 seed: 404
 
 model:
-  model: vit_base_patch16_224.orig_in21k_ft_in1k
+  model: swin_tiny_patch4_window7_224.ms_in1k
   weighted_loss: True
 
 datamodule:

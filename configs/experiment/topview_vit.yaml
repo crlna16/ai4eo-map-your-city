@@ -15,3 +15,6 @@ defaults:
 name: "topview_vit"
 
 seed: 404
+
+model:
+  model: vit_base_patch16_224.orig_in21k_ft_in1k

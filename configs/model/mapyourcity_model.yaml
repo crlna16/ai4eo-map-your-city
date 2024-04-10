@@ -1,8 +1,9 @@
 _target_: ai4eo_mapyourcity.models.mapyourcity_model.MapYourCityModel
-learning_rate: 0.001
+learning_rate: 0.00001
 num_classes: 7
-model: google/vit-base-patch16-224
-weighted_loss: False
+model: swin_tiny_patch4_window7_224.ms_in1k
+pretrained: True
+weighted_loss: True
 class_weights:
   '0' : 0.0647
   '1' : 0.158

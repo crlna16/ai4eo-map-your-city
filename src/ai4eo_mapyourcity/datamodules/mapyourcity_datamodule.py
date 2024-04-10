@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader, Dataset
 
 from PIL import Image
 import rasterio
+import timm
 
 class MapYourCityDataset(Dataset):
     '''
@@ -24,6 +25,7 @@ class MapYourCityDataset(Dataset):
       transform (str) : choice of ['resize', 'center_crop', 'random_crop', 'none']
       target_size (int) : target image size
       sentinel2_mode (str) : choice of ['rgb', 'ndvi']
+      model (str) : timm model identifier
       augment (float) : probability for data augmentation (default: 0.0)
 
     '''
@@ -34,6 +36,7 @@ class MapYourCityDataset(Dataset):
                  transform,
                  target_size,
                  sentinel2_mode,
+                 model,
                  augment=0.0
                  ):
         super().__init__()
@@ -42,6 +45,8 @@ class MapYourCityDataset(Dataset):
         self.label_file = 'label.txt'
         self.sentinel2_mode = sentinel2_mode
         self.augment = augment
+
+        config = timm.get_pretrained_cfg(model)
 
         match self.img_type:
             case 'streetview':
@@ -63,27 +68,27 @@ class MapYourCityDataset(Dataset):
         match transform:
             case 'resize':
                 self.transforms = v2.Compose([v2.ToImage(),
-                                      v2.Resize(size=(target_size, target_size), interpolation=2),
+                                      v2.Resize(size=config.input_size[1:], interpolation=2),
                                       v2.RandomHorizontalFlip(p=self.augment),
                                       v2.RandomVerticalFlip(p=self.augment),
                                       v2.ToDtype(torch.float32, scale=True),
-                                      v2.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+                                      v2.Normalize(mean=config.mean, std=config.std)
                                       ])
             case 'center_crop':
                 self.transforms = v2.Compose([v2.ToImage(),
-                                      v2.CenterCrop(size=target_size),
+                                      v2.CenterCrop(size=config.input_size[1:]),
                                       v2.RandomHorizontalFlip(p=self.augment),
                                       v2.RandomVerticalFlip(p=self.augment),
                                       v2.ToDtype(torch.float32, scale=True),
-                                      v2.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+                                      v2.Normalize(mean=config.mean, std=config.std)
                                       ])
             case 'random_crop':
                 self.transforms = v2.Compose([v2.ToImage(),
-                                      v2.RandomCrop(size=target_size),
+                                      v2.RandomCrop(size=config.input_size[1:]),
                                       v2.RandomHorizontalFlip(p=self.augment),
                                       v2.RandomVerticalFlip(p=self.augment),
                                       v2.ToDtype(torch.float32, scale=True),
-                                      v2.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+                                      v2.Normalize(mean=config.mean, std=config.std)
                                       ])
             case 'none':
                 self.transforms = v2.Compose([v2.ToImage(),
@@ -150,7 +155,7 @@ class MapYourCityDataModule(L.LightningDataModule):
     def __init__(self,
                  data_dir, fold, fold_dir, batch_size, num_workers,
                  pin_memory, img_type, transform, target_size, sentinel2_mode,
-                 augment):
+                 model, augment):
         super().__init__()
 
         self.data_dir = data_dir
@@ -165,6 +170,7 @@ class MapYourCityDataModule(L.LightningDataModule):
         self.target_size = target_size
         self.sentinel2_mode = sentinel2_mode
         self.augment = augment
+        self.model = model
 
     def setup(self, stage='fit'):
         '''
@@ -173,13 +179,15 @@ class MapYourCityDataModule(L.LightningDataModule):
         self.train_data = MapYourCityDataset(os.path.join(self.data_dir, 'train', 'data'),
                                              os.path.join(self.fold_dir, f'split_train_{self.fold}.csv'),
                                              self.img_type, self.transform, self.target_size, self.sentinel2_mode,
-                                             self.augment)
+                                             self.model, self.augment)
         self.valid_data = MapYourCityDataset(os.path.join(self.data_dir, 'train', 'data'),
                                              os.path.join(self.fold_dir, f'split_valid_{self.fold}.csv'),
-                                             self.img_type, self.transform, self.target_size, self.sentinel2_mode)
+                                             self.img_type, self.transform, self.target_size, self.sentinel2_mode,
+                                             self.model)
         self.test_data = MapYourCityDataset(os.path.join(self.data_dir, 'test', 'data'),
                                              os.path.join(self.data_dir, 'test',  f'test-set.csv'),
-                                             self.img_type, self.transform, self.target_size, self.sentinel2_mode)
+                                             self.img_type, self.transform, self.target_size, self.sentinel2_mode,
+                                             self.model)
 
     def prepare_data(self):
         pass

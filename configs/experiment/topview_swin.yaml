@@ -17,9 +17,8 @@ name: "topview_swin"
 seed: 404
 
 model:
-  model: microsoft/swinv2-tiny-patch4-window8-256
+  model: swin_tiny_patch4_window7_224.ms_in1k
   weighted_loss: True
 
 datamodule:
-  target_size: 256
   batch_size: 32

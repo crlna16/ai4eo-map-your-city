@@ -5,7 +5,11 @@ from torch.nn import functional as F
 from torch import optim
 from torch.nn import Linear
 
-from transformers import ViTForImageClassification, SwinForImageClassification
+import timm
+# TODO
+# load models
+# pretrained flag
+# transforms from model
 import torchmetrics
 
 from pytorch_lightning import LightningModule
@@ -13,10 +17,12 @@ from pytorch_lightning import LightningModule
 class MapYourCityModel(LightningModule):
     '''
     Wrapper for the MapYourCity models
-    - torchvision pretrained Vision Transformers / SWIN
+    Architectures from TIMM
+    https://huggingface.co/timm/swin_tiny_patch4_window7_224.ms_in1k
 
     Args:
-      model (str)       : specifies which flavor of ViT to use
+      model (str)       : specifies which model to use
+      pretrained (bool) : if True, use pretrained model weights
       num_classes (int) : number of output classes
       learning_rate (float) : optimizer learning rate
       weighted_loss (bool) : if True, apply class_weights in CE loss
@@ -24,19 +30,14 @@ class MapYourCityModel(LightningModule):
 
     '''
 
-    def __init__(self, model, num_classes, learning_rate, weighted_loss, class_weights):
+    def __init__(self, model, pretrained, num_classes, learning_rate, weighted_loss, class_weights):
 
         super().__init__()
         # this line allows to access init params with 'self.hparams' attribute
         # it also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
 
-        if model.startswith('google/vit'):
-            backbone = ViTForImageClassification.from_pretrained(model, num_labels=num_classes, ignore_mismatched_sizes=True)
-        elif model.startswith('microsoft/swin'):
-            backbone = SwinForImageClassification.from_pretrained(model, num_labels=num_classes, ignore_mismatched_sizes=True)
-
-        self.backbone = backbone
+        self.backbone = timm.create_model(model, pretrained=pretrained, num_classes=num_classes)
 
         # metrics
         self.acc = torchmetrics.Accuracy('multiclass', num_classes=num_classes)
@@ -55,21 +56,21 @@ class MapYourCityModel(LightningModule):
         return self.backbone(x)
 
     def step(self, batch):
-       '''
-       Any step processes batch to return loss and predictions
-       '''
+        '''
+        Any step processes batch to return loss and predictions
+        '''
 
-       x, y, pid = batch
-       prediction = self.backbone(x)
-       y_hat = torch.argmax(prediction.logits, dim=-1)
+        x, y, pid = batch
+        prediction = self.backbone(x)
+        y_hat = torch.argmax(prediction, dim=-1)
 
-       if self.weighted_loss:
-           loss = F.cross_entropy(prediction.logits, y, weight=self.class_weights)
-       else:
-           loss = F.cross_entropy(prediction.logits, y)
-       acc = self.acc(y_hat, y)
-       
-       return loss, acc, y_hat, y, pid
+        if self.weighted_loss:
+            loss = F.cross_entropy(prediction, y, weight=self.class_weights)
+        else:
+            loss = F.cross_entropy(prediction, y)
+        acc = self.acc(y_hat, y)
+        
+        return loss, acc, y_hat, y, pid
 
     def training_step(self, batch, batch_idx):
         loss, acc, _, _, _ = self.step(batch)
