@@ -23,7 +23,6 @@ class MapYourCityDataset(Dataset):
       csv_path (str) : csv file describing the split
       img_type (str) : choice of ['streetview', 'topview', 'sentinel-2']
       transform (str) : choice of ['resize', 'center_crop', 'random_crop', 'none']
-      target_size (int) : target image size
       sentinel2_mode (str) : choice of ['rgb', 'ndvi']
       model (str) : timm model identifier
       augment (float) : probability for data augmentation (default: 0.0)
@@ -34,7 +33,6 @@ class MapYourCityDataset(Dataset):
                  csv_path,
                  img_type,
                  transform,
-                 target_size,
                  sentinel2_mode,
                  model,
                  augment=0.0
@@ -154,7 +152,7 @@ class MapYourCityDataset(Dataset):
 class MapYourCityDataModule(L.LightningDataModule):
     def __init__(self,
                  data_dir, fold, fold_dir, batch_size, num_workers,
-                 pin_memory, img_type, transform, target_size, sentinel2_mode,
+                 pin_memory, img_type, transform, sentinel2_mode,
                  model, augment):
         super().__init__()
 
@@ -167,7 +165,6 @@ class MapYourCityDataModule(L.LightningDataModule):
 
         self.img_type = img_type
         self.transform = transform
-        self.target_size = target_size
         self.sentinel2_mode = sentinel2_mode
         self.augment = augment
         self.model = model
@@ -178,15 +175,15 @@ class MapYourCityDataModule(L.LightningDataModule):
         '''
         self.train_data = MapYourCityDataset(os.path.join(self.data_dir, 'train', 'data'),
                                              os.path.join(self.fold_dir, f'split_train_{self.fold}.csv'),
-                                             self.img_type, self.transform, self.target_size, self.sentinel2_mode,
+                                             self.img_type, self.transform, self.sentinel2_mode,
                                              self.model, self.augment)
         self.valid_data = MapYourCityDataset(os.path.join(self.data_dir, 'train', 'data'),
                                              os.path.join(self.fold_dir, f'split_valid_{self.fold}.csv'),
-                                             self.img_type, self.transform, self.target_size, self.sentinel2_mode,
+                                             self.img_type, self.transform, self.sentinel2_mode,
                                              self.model)
         self.test_data = MapYourCityDataset(os.path.join(self.data_dir, 'test', 'data'),
                                              os.path.join(self.data_dir, 'test',  f'test-set.csv'),
-                                             self.img_type, self.transform, self.target_size, self.sentinel2_mode,
+                                             self.img_type, self.transform, self.sentinel2_mode,
                                              self.model)
 
     def prepare_data(self):

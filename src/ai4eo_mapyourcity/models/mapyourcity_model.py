@@ -6,10 +6,6 @@ from torch import optim
 from torch.nn import Linear
 
 import timm
-# TODO
-# load models
-# pretrained flag
-# transforms from model
 import torchmetrics
 
 from pytorch_lightning import LightningModule

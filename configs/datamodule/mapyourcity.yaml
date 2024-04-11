@@ -8,7 +8,6 @@ fold: ${fold} # is specified in train.yaml
 fold_dir: ${fold_dir}
 img_type: topview
 transform: center_crop
-target_size: 224
 sentinel2_mode: rgb
 augment: 0.0
 model: ${model.model}
