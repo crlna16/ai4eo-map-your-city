@@ -12,7 +12,7 @@ defaults:
 # this allows you to overwrite only specified parameters
 
 # name of the run determines folder name in logs
-name: "topview_swinv2"
+name: "sentinel2_ndvi_swinv2"
 
 seed: 404
 
@@ -21,4 +21,6 @@ model:
   weighted_loss: True
 
 datamodule:
-  batch_size: 32
+  img_type: sentinel-2
+  sentinel2_mode: ndvi
+  transform: center_crop

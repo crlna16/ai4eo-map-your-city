@@ -12,7 +12,7 @@ defaults:
 # this allows you to overwrite only specified parameters
 
 # name of the run determines folder name in logs
-name: "streetview_vit_augment"
+name: "streetview_swin"
 
 seed: 404
 
@@ -23,4 +23,4 @@ model:
 datamodule:
   img_type: streetview
   transform: center_crop
-  augment: 0.5
+  augment: 0.0
