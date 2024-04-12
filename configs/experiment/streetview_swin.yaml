@@ -12,15 +12,15 @@ defaults:
 # this allows you to overwrite only specified parameters
 
 # name of the run determines folder name in logs
-name: "streetview_swin"
+name: "streetview_swinv2_resized"
 
 seed: 404
 
 model:
-  model: swin_tiny_patch4_window7_224.ms_in1k
+  model: swinv2_tiny_window16_256.ms_in1k
   weighted_loss: True
 
 datamodule:
   img_type: streetview
-  transform: center_crop
+  transform: resize
   augment: 0.0

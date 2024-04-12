@@ -23,4 +23,4 @@ model:
 datamodule:
   img_type: sentinel-2
   sentinel2_mode: ndvi
-  transform: center_crop
+  transform: resize

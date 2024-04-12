@@ -12,12 +12,12 @@ defaults:
 # this allows you to overwrite only specified parameters
 
 # name of the run determines folder name in logs
-name: "topview_swinv2"
+name: "topview_swinv2_base"
 
 seed: 404
 
 model:
-  model: swinv2_tiny_window16_256.ms_in1k
+  model: swinv2_base_window12to24_192to384.ms_in22k_ft_in1k
   weighted_loss: True
 
 datamodule:

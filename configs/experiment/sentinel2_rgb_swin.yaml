@@ -12,14 +12,15 @@ defaults:
 # this allows you to overwrite only specified parameters
 
 # name of the run determines folder name in logs
-name: "sentinel2_rgb_vit"
+name: "sentinel2_rgb_swin"
 
 seed: 404
 
 model:
-  model: vit_base_patch16_224.orig_in21k_ft_in1k
+  model: swinv2_tiny_window16_256.ms_in1k
   weighted_loss: True
 
 datamodule:
   img_type: sentinel-2
   sentinel2_mode: rgb
+  transform: resize

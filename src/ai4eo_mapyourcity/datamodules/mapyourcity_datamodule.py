@@ -122,22 +122,38 @@ class MapYourCityDataset(Dataset):
             return img.convert("RGB")
 
     def _sentinel_rgb_loader(self, path):
+        '''
+        Load Sentinel-2 and extract the RGB channels
+        
+        Apply factor of 3 x 10^-4 as in demo notebook
+        
+        Return as Image for compliance with transforms
+        '''
         with rasterio.open(path) as f:
             s2 = f.read()
             s2 = np.transpose(s2,[1,2,0])
-        return s2[...,[3,2,1]]
+
+            s2_rgb = s2[...,[3,2,1]] * 3e-4
+            compl_trafo = v2.Compose([v2.ToImage(), v2.ToDtype(torch.uint8, scale=True)])
+            return compl_trafo(s2_rgb)
 
     def _sentinel_ndvi_loader(self, path):
         '''Return NDVI, NDBI, and NDWI instead of RGB'''
         with rasterio.open(path) as f:
             s2 = f.read()
+            s2 = np.transpose(s2,[1,2,0])
             # NIR - RED
             ndvi = (s2[:,:,7] - s2[:,:,3]) / (s2[:,:,7] + s2[:,:,3])
             # SWIR - NIR
             ndbi = (s2[:,:,10] - s2[:,:,7]) / (s2[:,:,10] + s2[:,:,7])
             # NIR - RGB
             ndwi = (s2[:,:,2] - s2[:,:,7]) / (s2[:,:,2] + s2[:,:,7])
-        return np.dstack([ndvi, ndwi, ndbi])
+
+            stacked = np.dstack([ndvi, ndwi, ndbi])
+            stacked = (stacked + 1.0) / 2.
+            compl_trafo = v2.Compose([v2.ToImage(), v2.ToDtype(torch.uint8, scale=True)])
+            return compl_trafo(stacked)
+
 
     def __len__(self):
         return len(self.labels)
