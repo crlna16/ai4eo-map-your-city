@@ -22,9 +22,10 @@ class MapYourCityDataset(Dataset):
       data_path (str) : data root path
       csv_path (str) : csv file describing the split
       img_type (str) : choice of ['streetview', 'topview', 'sentinel-2']
-      transform (str) : choice of ['resize', 'center_crop', 'random_crop', 'none']
+      transform (str) : choice of ['default', 'resize', 'center_crop', 'random_crop', 'none']
       sentinel2_mode (str) : choice of ['rgb', 'ndvi']
       model (str) : timm model identifier
+      is_training (bool) : if True, apply data augmentation (applies to default case only)
       augment (float) : probability for data augmentation (default: 0.0)
 
     '''
@@ -35,6 +36,7 @@ class MapYourCityDataset(Dataset):
                  transform,
                  sentinel2_mode,
                  model,
+                 is_training,
                  augment=0.0
                  ):
         super().__init__()
@@ -44,7 +46,7 @@ class MapYourCityDataset(Dataset):
         self.sentinel2_mode = sentinel2_mode
         self.augment = augment
 
-        config = timm.get_pretrained_cfg(model)
+        config = timm.data.resolve_model_data_config(model)
 
         match self.img_type:
             case 'streetview':
@@ -64,13 +66,15 @@ class MapYourCityDataset(Dataset):
 
         # assign transforms
         match transform:
+            case 'default':
+                self.transforms = timm.data.create_transform(**config, is_training=is_training)
             case 'resize':
                 self.transforms = v2.Compose([v2.ToImage(),
                                       v2.Resize(size=config.input_size[1:], interpolation=2),
                                       v2.RandomHorizontalFlip(p=self.augment),
                                       v2.RandomVerticalFlip(p=self.augment),
                                       v2.ToDtype(torch.float32, scale=True),
-                                      v2.Normalize(mean=config.mean, std=config.std)
+                                      v2.Normalize(mean=config['mean'], std=config['std'])
                                       ])
             case 'center_crop':
                 self.transforms = v2.Compose([v2.ToImage(),
@@ -78,7 +82,7 @@ class MapYourCityDataset(Dataset):
                                       v2.RandomHorizontalFlip(p=self.augment),
                                       v2.RandomVerticalFlip(p=self.augment),
                                       v2.ToDtype(torch.float32, scale=True),
-                                      v2.Normalize(mean=config.mean, std=config.std)
+                                      v2.Normalize(mean=config['mean'], std=config['std'])
                                       ])
             case 'random_crop':
                 self.transforms = v2.Compose([v2.ToImage(),
@@ -86,7 +90,7 @@ class MapYourCityDataset(Dataset):
                                       v2.RandomHorizontalFlip(p=self.augment),
                                       v2.RandomVerticalFlip(p=self.augment),
                                       v2.ToDtype(torch.float32, scale=True),
-                                      v2.Normalize(mean=config.mean, std=config.std)
+                                      v2.Normalize(mean=config['mean'], std=config['std'])
                                       ])
             case 'none':
                 self.transforms = v2.Compose([v2.ToImage(),
@@ -192,15 +196,15 @@ class MapYourCityDataModule(L.LightningDataModule):
         self.train_data = MapYourCityDataset(os.path.join(self.data_dir, 'train', 'data'),
                                              os.path.join(self.fold_dir, f'split_train_{self.fold}.csv'),
                                              self.img_type, self.transform, self.sentinel2_mode,
-                                             self.model, self.augment)
+                                             self.model, True, self.augment)
         self.valid_data = MapYourCityDataset(os.path.join(self.data_dir, 'train', 'data'),
                                              os.path.join(self.fold_dir, f'split_valid_{self.fold}.csv'),
                                              self.img_type, self.transform, self.sentinel2_mode,
-                                             self.model)
+                                             self.model, False)
         self.test_data = MapYourCityDataset(os.path.join(self.data_dir, 'test', 'data'),
                                              os.path.join(self.data_dir, 'test',  f'test-set.csv'),
                                              self.img_type, self.transform, self.sentinel2_mode,
-                                             self.model)
+                                             self.model, False)
 
     def prepare_data(self):
         pass

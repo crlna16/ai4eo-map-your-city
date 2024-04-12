@@ -7,7 +7,7 @@ pin_memory: False
 fold: ${fold} # is specified in train.yaml
 fold_dir: ${fold_dir}
 img_type: topview
-transform: center_crop
+transform: default
 sentinel2_mode: rgb
 augment: 0.0
 model: ${model.model}
