@@ -48,6 +48,7 @@ class MapYourCityDataset(Dataset):
 
         config = timm.data.resolve_model_data_config(model)
         true_size = int(config['input_size'][1] / config['crop_pct'])
+        true_size = int(config['input_size'][1])
 
         match self.img_type:
             case 'streetview':
@@ -84,7 +85,7 @@ class MapYourCityDataset(Dataset):
                                         ])
             case 'resize':
                 self.transforms = v2.Compose([v2.ToImage(),
-                                      v2.Resize(size=config['input_size'][1:], interpolation=2),
+                                      v2.Resize(size=(true_size, true_size), interpolation=2),
                                       v2.RandomHorizontalFlip(p=self.augment),
                                       v2.RandomVerticalFlip(p=self.augment),
                                       v2.ToDtype(torch.float32, scale=True),
@@ -92,7 +93,7 @@ class MapYourCityDataset(Dataset):
                                       ])
             case 'center_crop':
                 self.transforms = v2.Compose([v2.ToImage(),
-                                      v2.CenterCrop(size=config['input_size'][1:]),
+                                      v2.CenterCrop(size=(true_size, true_size)),
                                       v2.RandomHorizontalFlip(p=self.augment),
                                       v2.RandomVerticalFlip(p=self.augment),
                                       v2.ToDtype(torch.float32, scale=True),
@@ -100,7 +101,7 @@ class MapYourCityDataset(Dataset):
                                       ])
             case 'random_crop':
                 self.transforms = v2.Compose([v2.ToImage(),
-                                      v2.RandomCrop(size=config['input_size'][1:]),
+                                      v2.RandomCrop(size=(true_size, true_size)),
                                       v2.RandomHorizontalFlip(p=self.augment),
                                       v2.RandomVerticalFlip(p=self.augment),
                                       v2.ToDtype(torch.float32, scale=True),

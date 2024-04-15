@@ -1,8 +1,6 @@
 _target_: ai4eo_mapyourcity.models.mapyourcity_model.MapYourCityModel
 learning_rate: 0.00001
 num_classes: 7
-model: swin_tiny_patch4_window7_224.ms_in1k
-pretrained: True
 weighted_loss: True
 class_weights:
   '0' : 0.0647
@@ -14,10 +12,16 @@ class_weights:
   '6' : 0.219
 
 backbone:
-  _target_: ai4eo_mapyourcity.models.mapyourcity_model.SimpleConvNet
-  in_channels: 12
-  mid_channels: 36
-  kernel_size: 5
-  mid_units: 512
-  out_units: 128
-  dropout: 0.1
+  _target_: ai4eo_mapyourcity.models.backbones.TIMMCollection
+  model_id: swin_tiny_patch4_window7_224.ms_in1k
+  is_pretrained: True
+  num_classes: ${model.num_classes}
+
+#backbone:
+#  _target_: ai4eo_mapyourcity.models.backbones.SimpleConvNet
+#  in_channels: 12
+#  mid_channels: 36
+#  kernel_size: 5
+#  mid_units: 512
+#  out_units: 128
+#  dropout: 0.1

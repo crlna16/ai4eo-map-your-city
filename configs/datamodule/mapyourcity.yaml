@@ -10,4 +10,4 @@ img_type: topview
 transform: default
 sentinel2_mode: rgb
 augment: 0.0
-model: ${model.model}
+model: ${model.backbone.model_id}

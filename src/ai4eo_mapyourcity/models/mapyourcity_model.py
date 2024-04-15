@@ -26,21 +26,14 @@ class MapYourCityModel(LightningModule):
 
     '''
 
-    def __init__(self, model, pretrained, num_classes, learning_rate, weighted_loss, class_weights):
+    def __init__(self, backbone, num_classes, learning_rate, weighted_loss, class_weights):
 
         super().__init__()
         # this line allows to access init params with 'self.hparams' attribute
         # it also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
 
-        if self.hparams.pretrained:
-            self.backbone = timm.create_model(model, pretrained=pretrained, num_classes=num_classes)
-        else:
-            match model:
-                case 'simple_convnet':
-                    self.backbone = SimpleConvNet(num_classes=num_classes)
-                case _
-                    raise ValueError('Invalid model parameter', model)
+        self.backbone = backbone
 
         # metrics
         self.acc = torchmetrics.Accuracy('multiclass', num_classes=num_classes)
@@ -108,31 +101,3 @@ class MapYourCityModel(LightningModule):
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
         return optimizer
 
-class SimpleConvNet():
-    '''
-    A simple ConvNet for the Sentinel-2 data
-
-    '''
-
-    def __init__(self, 
-                 num_classes,
-                 in_channels=12,
-                 mid_channels=36,
-                 kernel_size=5,
-                 mid_units=128,
-                 dropout=0.1
-                 ):
-        super().__init__()
-
-        flattened_shape = 
-
-        self.backbone = nn.Sequential(
-                         nn.Conv2d(in_channels, out_channels, kernel_size),
-                         nn.MaxPool2d(),
-                         nn.Conv2d(out_channels, out_channels, kernel_size),
-                         nn.MaxPool2d(),
-                         nn.Flatten(),
-                         nn.Linear(mid_units, mid_units),
-                         nn.Dropout(dropout),
-                         nn.Linear(mid_units, num_classes)
-                         )
