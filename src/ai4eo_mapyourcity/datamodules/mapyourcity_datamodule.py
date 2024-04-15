@@ -47,6 +47,7 @@ class MapYourCityDataset(Dataset):
         self.augment = augment
 
         config = timm.data.resolve_model_data_config(model)
+        true_size = int(config['input_size'][1] / config['crop_pct'])
 
         match self.img_type:
             case 'streetview':
@@ -67,10 +68,23 @@ class MapYourCityDataset(Dataset):
         # assign transforms
         match transform:
             case 'default':
-                self.transforms = timm.data.create_transform(**config, is_training=is_training)
+                if is_training:
+                    self.transforms = v2.Compose([v2.ToImage(),
+                                        v2.RandomResizedCrop(size=(true_size, true_size), scale=(0.08, 1.0), ratio=(0.75, 1.3333), interpolation=3),
+                                        v2.RandomHorizontalFlip(p=0.5),
+                                        v2.ColorJitter(brightness=(0.6, 1.4), contrast=(0.6, 1.4), saturation=(0.6, 1.4), hue=None),
+                                        v2.ToDtype(torch.float32, scale=True),
+                                        v2.Normalize(mean=config['mean'], std=config['std'])
+                                        ])
+                else:
+                    self.transforms = v2.Compose([v2.ToImage(),
+                                        v2.Resize(size=(true_size, true_size), interpolation=3),
+                                        v2.ToDtype(torch.float32, scale=True),
+                                        v2.Normalize(mean=config['mean'], std=config['std'])
+                                        ])
             case 'resize':
                 self.transforms = v2.Compose([v2.ToImage(),
-                                      v2.Resize(size=config.input_size[1:], interpolation=2),
+                                      v2.Resize(size=config['input_size'][1:], interpolation=2),
                                       v2.RandomHorizontalFlip(p=self.augment),
                                       v2.RandomVerticalFlip(p=self.augment),
                                       v2.ToDtype(torch.float32, scale=True),
@@ -78,7 +92,7 @@ class MapYourCityDataset(Dataset):
                                       ])
             case 'center_crop':
                 self.transforms = v2.Compose([v2.ToImage(),
-                                      v2.CenterCrop(size=config.input_size[1:]),
+                                      v2.CenterCrop(size=config['input_size'][1:]),
                                       v2.RandomHorizontalFlip(p=self.augment),
                                       v2.RandomVerticalFlip(p=self.augment),
                                       v2.ToDtype(torch.float32, scale=True),
@@ -86,7 +100,7 @@ class MapYourCityDataset(Dataset):
                                       ])
             case 'random_crop':
                 self.transforms = v2.Compose([v2.ToImage(),
-                                      v2.RandomCrop(size=config.input_size[1:]),
+                                      v2.RandomCrop(size=config['input_size'][1:]),
                                       v2.RandomHorizontalFlip(p=self.augment),
                                       v2.RandomVerticalFlip(p=self.augment),
                                       v2.ToDtype(torch.float32, scale=True),

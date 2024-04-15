@@ -12,13 +12,16 @@ defaults:
 # this allows you to overwrite only specified parameters
 
 # name of the run determines folder name in logs
-name: "streetview_swinv2_trafo"
+name: "sentinel2_ndvi_swinv2"
 
 seed: 404
 
 model:
-  model: swinv2_tiny_window16_256.ms_in1k
+  model: simple_convnet
+  pretrained: False
   weighted_loss: True
 
 datamodule:
-  img_type: streetview
+  img_type: sentinel-2
+  sentinel2_mode: ndvi
+  transform: resize
