@@ -96,7 +96,7 @@ def train(config: DictConfig) -> Optional[float]:
         trainer.predict(model=model, dataloaders=valid_dataloader, ckpt_path=ckpt_path)
 
         valid_predictions = pd.DataFrame(model.valid_predictions)
-        valid_predictions.to_csv(f'valid_predictions_fold_{datamodule.fold}.csv', index=False)
+        valid_predictions.to_csv(f'valid_predictions_fold_{datamodule.dataset_options["fold"]}.csv', index=False)
 
 
     # Get metric score for hyperparameter optimization
@@ -118,7 +118,7 @@ def train(config: DictConfig) -> Optional[float]:
         trainer.test(model=model, dataloaders=test_dataloader, ckpt_path=ckpt_path)
 
         test_predictions = pd.DataFrame(model.test_predictions)
-        test_predictions.to_csv(f'test_predictions_fold_{datamodule.fold}.csv', index=False)
+        test_predictions.to_csv(f'test_predictions_fold_{datamodule.dataset_options["fold"]}.csv', index=False)
 
     # Make sure everything closed properly
     log.info("Finalizing!")

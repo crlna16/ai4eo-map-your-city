@@ -1,13 +1,11 @@
 _target_: ai4eo_mapyourcity.datamodules.mapyourcity_datamodule.MapYourCityDataModule
 
-data_dir: ${data_dir} # data_dir is specified in train.yaml
 batch_size: 64 # largest is 256
 num_workers: 8
-pin_memory: False
-fold: ${fold} # is specified in train.yaml
-fold_dir: ${fold_dir}
-img_type: topview
-transform: default
-sentinel2_mode: rgb
-augment: 0.0
-model: ${model.backbone.model_id}
+pin_memory: True
+
+dataset_options:
+  data_dir: ${data_dir} # data_dir is specified in train.yaml
+  fold: ${fold} # is specified in train.yaml
+  fold_dir: ${fold_dir}
+  model_id: ${model.backbone.model_id}
