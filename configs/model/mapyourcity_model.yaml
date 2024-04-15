@@ -12,3 +12,12 @@ class_weights:
   '4' : 0.116
   '5' : 0.143
   '6' : 0.219
+
+backbone:
+  _target_: ai4eo_mapyourcity.models.mapyourcity_model.SimpleConvNet
+  in_channels: 12
+  mid_channels: 36
+  kernel_size: 5
+  mid_units: 512
+  out_units: 128
+  dropout: 0.1
