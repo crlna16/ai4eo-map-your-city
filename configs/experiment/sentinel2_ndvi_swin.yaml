@@ -5,7 +5,6 @@
 
 defaults:
   - override /datamodule: mapyourcity.yaml
-  - override /model: mapyourcity_model.yaml
   - override /trainer: default.yaml
 
 # all parameters below will be merged with parameters from default configurations set above

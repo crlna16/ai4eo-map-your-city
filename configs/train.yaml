@@ -4,7 +4,7 @@
 defaults:
   - _self_
   - datamodule: mapyourcity.yaml
-  - model: mapyourcity_model.yaml
+  - model: timm.yaml
   - callbacks: default.yaml
   - logger: tensorboard.yaml # set logger here or use command line (e.g. `python train.py logger=tensorboard`)
   - trainer: default.yaml
