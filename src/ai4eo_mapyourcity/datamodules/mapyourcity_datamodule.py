@@ -43,7 +43,7 @@ class PhotoDataset(Dataset):
             config = dict(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
         else:
             config = timm.data.resolve_model_data_config(options['model_id'])
-            input_size = config['input_size'][1]
+            input_size = int( config['input_size'][1] / config['crop_pct'] )
 
         match options['transform']:
             case 'default':
