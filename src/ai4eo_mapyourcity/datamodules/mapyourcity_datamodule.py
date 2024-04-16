@@ -111,176 +111,73 @@ class PhotoDataset(Dataset):
 
         return img, label, pid
 
-#class Sentinel2Dataset(Dataset):
-#    '''
-#    Dataset for MapYourCity data
-#    
-#    Sentinel-2 only
-#
-#    TODO
-#
-#    Arguments:
-#      data_path (str) : data root path
-#      csv_path (str) : csv file describing the split
-#      img_type (str) : choice of ['streetview', 'topview', 'sentinel-2']
-#      transform (str) : choice of ['default', 'resize', 'center_crop', 'random_crop', 'none']
-#      sentinel2_mode (str) : choice of ['rgb', 'ndvi']
-#      model (str) : timm model identifier
-#      is_training (bool) : if True, apply data augmentation (applies to default case only)
-#      augment (float) : probability for data augmentation (default: 0.0)
-#
-#    '''
-#    def __init__(self,
-#                 options,
-#                 split='train'
-#                 ):
-#                 #data_path,
-#                 #csv_path,
-#                 #img_type,
-#                 #transform,
-#                 #sentinel2_mode,
-#                 #model,
-#                 #is_training,
-#                 #augment=0.0
-#                 #):
-#        super().__init__()
-#
-#        self.img_file = options['img_file']
-#        self.sentinel2_mode = sentinel2_mode
-#        self.augment = augment
-#
-#        config = timm.data.resolve_model_data_config(options['model_id'])
-#
-#        match self.img_file:
-#            case 'street.jpg':
-#                self.loader = self._photo_loader
-#            case 'orthophoto.tif':
-#                self.loader = self._photo_loader
-#            case 's2_l2a.tif':
-#                if self.sentinel2_mode == 'rgb':
-#                    self.loader = self._sentinel_rgb_loader
-#                elif self.sentinel2_mode == 'ndvi':
-#                    self.loader = self._sentinel_ndvi_loader
-#            case _:
-#                raise ValueError('Invalid choice:', self.img_type)
-#
-#        # assign transforms
-#        match transform:
-#            case 'default':
-#                if is_training:
-#                    self.transforms = v2.Compose([v2.ToImage(),
-#                                        v2.RandomResizedCrop(size=(true_size, true_size), scale=(0.08, 1.0), ratio=(0.75, 1.3333), interpolation=3),
-#                                        v2.RandomHorizontalFlip(p=0.5),
-#                                        v2.ColorJitter(brightness=(0.6, 1.4), contrast=(0.6, 1.4), saturation=(0.6, 1.4), hue=None),
-#                                        v2.ToDtype(torch.float32, scale=True),
-#                                        v2.Normalize(mean=config['mean'], std=config['std'])
-#                                        ])
-#                else:
-#                    self.transforms = v2.Compose([v2.ToImage(),
-#                                        v2.Resize(size=(true_size, true_size), interpolation=3),
-#                                        v2.ToDtype(torch.float32, scale=True),
-#                                        v2.Normalize(mean=config['mean'], std=config['std'])
-#                                        ])
-#            case 'resize':
-#                self.transforms = v2.Compose([v2.ToImage(),
-#                                      v2.Resize(size=(true_size, true_size), interpolation=2),
-#                                      v2.RandomHorizontalFlip(p=self.augment),
-#                                      v2.RandomVerticalFlip(p=self.augment),
-#                                      v2.ToDtype(torch.float32, scale=True),
-#                                      v2.Normalize(mean=config['mean'], std=config['std'])
-#                                      ])
-#            case 'center_crop':
-#                self.transforms = v2.Compose([v2.ToImage(),
-#                                      v2.CenterCrop(size=(true_size, true_size)),
-#                                      v2.RandomHorizontalFlip(p=self.augment),
-#                                      v2.RandomVerticalFlip(p=self.augment),
-#                                      v2.ToDtype(torch.float32, scale=True),
-#                                      v2.Normalize(mean=config['mean'], std=config['std'])
-#                                      ])
-#            case 'random_crop':
-#                self.transforms = v2.Compose([v2.ToImage(),
-#                                      v2.RandomCrop(size=(true_size, true_size)),
-#                                      v2.RandomHorizontalFlip(p=self.augment),
-#                                      v2.RandomVerticalFlip(p=self.augment),
-#                                      v2.ToDtype(torch.float32, scale=True),
-#                                      v2.Normalize(mean=config['mean'], std=config['std'])
-#                                      ])
-#            case 'none':
-#                self.transforms = v2.Compose([v2.ToImage(),
-#                                      v2.ToDtype(torch.float32, scale=True),
-#                                      ])
-#            case _:
-#                raise ValueError('Invalid choice:', transform)
-#
-#
-#        df = pd.read_csv(csv_path)
-#
-#        self.pids = df['pid'].values
-#
-#        if 'label' in df.columns:
-#            self.labels = df['label'].values
-#        else: # test stage
-#            self.labels = [0] * len(self.pids)
-#
-#        self.image_paths = [os.path.join(data_path, pid, self.img_file) for pid in self.pids]
-#
-#        # not all folders have a streetview image
-#        if self.img_type == 'streetview':
-#            is_valid = [os.path.exists(imp) for imp in self.image_paths]
-#            self.pids = [self.pids[i] for i in range(len(self.pids)) if is_valid[i]]
-#            self.labels = [self.labels[i] for i in range(len(self.labels)) if is_valid[i]]
-#            self.image_paths = [self.image_paths[i] for i in range(len(self.image_paths)) if is_valid[i]]
-#
-#    def _photo_loader(self, path):
-#        with open(path, "rb") as f:
-#            img = Image.open(f)
-#            img.load()
-#
-#            return img.convert("RGB")
-#
-#    def _sentinel_rgb_loader(self, path):
-#        '''
-#        Load Sentinel-2 and extract the RGB channels
-#        
-#        Apply factor of 3 x 10^-4 as in demo notebook
-#        
-#        Return as Image for compliance with transforms
-#        '''
-#        with rasterio.open(path) as f:
-#            s2 = f.read()
-#            s2 = np.transpose(s2,[1,2,0])
-#
-#            s2_rgb = s2[...,[3,2,1]] * 3e-4
-#            compl_trafo = v2.Compose([v2.ToImage(), v2.ToDtype(torch.uint8, scale=True)])
-#            return compl_trafo(s2_rgb)
-#
-#    def _sentinel_ndvi_loader(self, path):
-#        '''Return NDVI, NDBI, and NDWI instead of RGB'''
-#        with rasterio.open(path) as f:
-#            s2 = f.read()
-#            s2 = np.transpose(s2,[1,2,0])
-#            # NIR - RED
-#            ndvi = (s2[:,:,7] - s2[:,:,3]) / (s2[:,:,7] + s2[:,:,3])
-#            # SWIR - NIR
-#            ndbi = (s2[:,:,10] - s2[:,:,7]) / (s2[:,:,10] + s2[:,:,7])
-#            # NIR - RGB
-#            ndwi = (s2[:,:,2] - s2[:,:,7]) / (s2[:,:,2] + s2[:,:,7])
-#
-#            stacked = np.dstack([ndvi, ndwi, ndbi])
-#            stacked = (stacked + 1.0) / 2.
-#            compl_trafo = v2.Compose([v2.ToImage(), v2.ToDtype(torch.uint8, scale=True)])
-#            return compl_trafo(stacked)
-#
-#
-#    def __len__(self):
-#        return len(self.labels)
-#
-#    def __getitem__(self, idx):
-#        img = self.transforms( self.loader( self.image_paths[idx] ) )
-#        label = self.labels[idx]
-#        pid = self.pids[idx]
-#
-#        return img, label, pid
+class Sentinel2Dataset(Dataset):
+    '''
+    Dataset for MapYourCity data
+    
+    Sentinel-2 only
+
+    TODO
+
+    Arguments:
+      data_path (str) : data root path
+      csv_path (str) : csv file describing the split
+      img_type (str) : choice of ['streetview', 'topview', 'sentinel-2']
+      transform (str) : choice of ['default', 'resize', 'center_crop', 'random_crop', 'none']
+      sentinel2_mode (str) : choice of ['rgb', 'ndvi']
+      model (str) : timm model identifier
+      is_training (bool) : if True, apply data augmentation (applies to default case only)
+      augment (float) : probability for data augmentation (default: 0.0)
+
+    '''
+    def __init__(self,
+                 options,
+                 split='train'
+                 ):
+        super().__init__()
+
+        self.img_file = options['img_file']
+        self.use_ndvi = options['use_ndvi']
+        # TODO add other bands
+
+        self.loader = self._sentinel2_loader
+
+        trafo0 = [v2.ToImage()] 
+        trafo2 = [v2.ToDtype(torch.float32, scale=True), v2.Normalize()]
+
+        self.transforms = v2.Compose(trafo0 + trafo1 + trafo2)
+
+    def _sentinel2_loader(self, path):
+        '''
+        Load Sentinel-2 and extract the RGB channels
+        
+        Apply factor of 3 x 10^-4 as in demo notebook
+        
+        Return as Image for compliance with transforms
+        '''
+        with rasterio.open(path) as f:
+            s2 = f.read()
+            s2 = s2 * 3e-4
+            # NIR - RED
+            ndvi = (s2[:,:,7] - s2[:,:,3]) / (s2[:,:,7] + s2[:,:,3])
+            # SWIR - NIR
+            ndbi = (s2[:,:,10] - s2[:,:,7]) / (s2[:,:,10] + s2[:,:,7])
+            # NIR - RGB
+            ndwi = (s2[:,:,2] - s2[:,:,7]) / (s2[:,:,2] + s2[:,:,7])
+            stacked = np.dstack([ndvi, ndwi, ndbi])
+
+            compl_trafo = v2.Compose([v2.ToImage(), v2.ToDtype(torch.uint8, scale=True)])
+            return compl_trafo(s2_rgb)
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        img = self.transforms( self.loader( self.image_paths[idx] ) )
+        label = self.labels[idx]
+        pid = self.pids[idx]
+
+        return img, label, pid
 
 class MapYourCityDataModule(L.LightningDataModule):
     '''
