@@ -21,12 +21,13 @@ class MapYourCityModel(LightningModule):
       pretrained (bool) : if True, use pretrained model weights
       num_classes (int) : number of output classes
       learning_rate (float) : optimizer learning rate
+      weight_decay (float) : optimizer weight decay
       weighted_loss (bool) : if True, apply class_weights in CE loss
       class_weights (dict) : class weights for CE loss
 
     '''
 
-    def __init__(self, backbone, num_classes, learning_rate, weighted_loss, class_weights):
+    def __init__(self, backbone, num_classes, learning_rate, weight_decay, weighted_loss, class_weights):
 
         super().__init__()
         # this line allows to access init params with 'self.hparams' attribute
@@ -40,8 +41,9 @@ class MapYourCityModel(LightningModule):
         self.weighted_loss = weighted_loss
         self.class_weights = torch.Tensor(list(class_weights.values())).to('cuda')
 
-        # other
+        # optimizer
         self.learning_rate = learning_rate
+        self.weight_decay = weight_decay
 
         # store predictions
         self.valid_predictions = {'pid': [], 'predicted_label': []}
@@ -98,6 +100,6 @@ class MapYourCityModel(LightningModule):
         self.log('test_acc', acc, on_epoch=True, on_step=False, sync_dist=True)
 
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
+        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
         return optimizer
 
