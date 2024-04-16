@@ -67,7 +67,7 @@ class MapYourCityModel(LightningModule):
         else:
             loss = F.cross_entropy(prediction, y)
         acc = self.acc(y_hat, y)
-        
+
         return loss, acc, y_hat, y, pid
 
     def training_step(self, batch, batch_idx):
