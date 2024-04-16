@@ -3,6 +3,6 @@ defaults:
 
 backbone:
   _target_: ai4eo_mapyourcity.models.backbones.TIMMCollection
-  model_id: swin_tiny_patch4_window7_224.ms_in1k
+  model_id: swinv2_tiny_window16_256.ms_in1k
   is_pretrained: True
   num_classes: ${model.num_classes}

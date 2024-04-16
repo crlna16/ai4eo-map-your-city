@@ -34,23 +34,30 @@ class SimpleConvNet(nn.Module):
 
     def __init__(self, 
                  num_classes,
-                 in_channels=12,
-                 mid_channels=36,
-                 kernel_size=5,
-                 mid_units=128,
-                 dropout=0.1
+                 in_channels,
+                 out_channels,
+                 kernel_size,
+                 pool_size,
+                 mid_units,
+                 dropout,
+                 model_id
                  ):
         super().__init__()
 
-        flattened_shape = 2
+        flattened_size = 6084  # TODO
+        kernel_tuple = (kernel_size, kernel_size)
+        pool_tuple = (pool_size, pool_size)
 
         self.backbone = nn.Sequential(
-                         nn.Conv2d(in_channels, out_channels, kernel_size),
-                         nn.MaxPool2d(),
-                         nn.Conv2d(out_channels, out_channels, kernel_size),
-                         nn.MaxPool2d(),
+                         nn.Conv2d(in_channels, out_channels, kernel_tuple),
+                         nn.MaxPool2d(pool_tuple),
+                         nn.Conv2d(out_channels, out_channels, kernel_tuple),
+                         nn.MaxPool2d(pool_tuple),
                          nn.Flatten(),
-                         nn.Linear(mid_units, mid_units),
+                         nn.Linear(flattened_size, mid_units),
                          nn.Dropout(dropout),
                          nn.Linear(mid_units, num_classes)
                          )
+
+    def forward(self, x):
+        return self.backbone(x)
