@@ -105,8 +105,6 @@ class PhotoDataset(MapYourCityDataset):
             config = timm.data.resolve_model_data_config(options['model_id'])
             input_size = int( config['input_size'][1] / config['crop_pct'] )
 
-        print('xyz', config)
-
         match options['transform']:
             case 'default':
                 if split == 'train':

@@ -24,4 +24,5 @@ model:
 datamodule:
   batch_size: 512
   dataset_options:
+    in_channels: 6
     use_bands: ['B02', 'B03', 'B04'] # RGB

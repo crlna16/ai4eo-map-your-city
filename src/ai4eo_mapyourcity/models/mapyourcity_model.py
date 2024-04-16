@@ -27,7 +27,14 @@ class MapYourCityModel(LightningModule):
 
     '''
 
-    def __init__(self, backbone, num_classes, learning_rate, weight_decay, weighted_loss, class_weights):
+    def __init__(self,
+                 backbone,
+                 num_classes,
+                 learning_rate,
+                 weight_decay,
+                 weighted_loss,
+                 class_weights,
+                 validation_metric):
 
         super().__init__()
         # this line allows to access init params with 'self.hparams' attribute
@@ -37,7 +44,22 @@ class MapYourCityModel(LightningModule):
         self.backbone = backbone
 
         # metrics
-        self.acc = torchmetrics.Accuracy('multiclass', num_classes=num_classes)
+        self.validation_metric = validation_metric
+
+        match validation_metric: 
+            case 'accuracy':
+                self.acc = torchmetrics.Accuracy('multiclass', num_classes=num_classes)
+            case 'confusion_matrix':
+                self.confmat = torchmetrics.ConfusionMatrix(task='multiclass', threshold=None, num_classes=num_classes, normalize='true')
+            case 'mean_average_precision':
+                self.maprec = torchmetrics.AveragePrecision(task='multiclass',
+                                                            num_classes=num_classes,
+                                                            average='macro',
+                                                            thresholds=None)
+            case _:
+                raise ValueError('Validation metric not implemented:', validation_metric)
+
+
         self.weighted_loss = weighted_loss
         self.class_weights = torch.Tensor(list(class_weights.values())).to('cuda')
 
@@ -66,38 +88,44 @@ class MapYourCityModel(LightningModule):
             loss = F.cross_entropy(prediction, y, weight=self.class_weights)
         else:
             loss = F.cross_entropy(prediction, y)
-        acc = self.acc(y_hat, y)
 
-        return loss, acc, y_hat, y, pid
+        if self.validation_metric == 'accuracy':
+            metric = self.acc(y_hat, y)
+        elif self.validation_metric == 'confusion_matrix':
+            metric = self.confmat(y_hat, y).diag().mean()
+        elif self.validation_metric == 'mean_average_precision':
+            metric = self.maprec(prediction, y)
+
+        return loss, metric, y_hat, y, pid
 
     def training_step(self, batch, batch_idx):
-        loss, acc, _, _, _ = self.step(batch)
+        loss, metric, _, _, _ = self.step(batch)
 
         self.log('train_loss', loss)
-        self.log('train_acc', acc)
+        self.log('train_metric', metric)
 
         return loss
 
     def validation_step(self, batch, batch_idx):
-        loss, acc, _, _, _ = self.step(batch)
+        loss, metric, _, _, _ = self.step(batch)
 
         self.log('valid_loss', loss, on_epoch=True, on_step=False, sync_dist=True)
-        self.log('valid_acc', acc, on_epoch=True, on_step=False, sync_dist=True)
+        self.log('valid_metric', metric, on_epoch=True, on_step=False, sync_dist=True)
 
     def predict_step(self, batch, batch_idx):
-        loss, acc, y_hat, y, pid = self.step(batch)
+        loss, metric, y_hat, y, pid = self.step(batch)
 
         self.valid_predictions['pid'].extend(list(pid))
         self.valid_predictions['predicted_label'].extend(list(y_hat.squeeze().cpu().numpy()))
 
     def test_step(self, batch, batch_idx):
-        loss, acc, y_hat, y, pid = self.step(batch)
+        loss, metric, y_hat, y, pid = self.step(batch)
 
         self.test_predictions['pid'].extend(list(pid))
         self.test_predictions['predicted_label'].extend(list(y_hat.squeeze().cpu().numpy()))
 
         self.log('test_loss', loss, on_epoch=True, on_step=False, sync_dist=True)
-        self.log('test_acc', acc, on_epoch=True, on_step=False, sync_dist=True)
+        self.log('test_metric', metric, on_epoch=True, on_step=False, sync_dist=True)
 
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
