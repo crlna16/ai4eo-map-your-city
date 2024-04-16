@@ -182,23 +182,23 @@ class Sentinel2Dataset(MapYourCityDataset):
         
         Apply factor of 3 x 10^-4 as in demo notebook
         
-        Return as Image for compliance with transforms
+        Returns:
+          Stacked array, channels first (C, W, H)
         '''
         with rasterio.open(path) as f:
             # TODO add support for selecting bands and indices
-            s2 = f.read()
-            s2 = np.transpose(s2, [1,2,0]) * 3e-4
+            s2 = f.read() * 3e-4
             # NIR - RED
             ndvi = (s2[...,7] - s2[...,3]) / (s2[...,7] + s2[...,3])
+            ndvi = ndvi[np.newaxis, ...]
             # SWIR - NIR
             ndbi = (s2[...,10] - s2[...,7]) / (s2[...,10] + s2[...,7])
+            ndbi = ndbi[np.newaxis, ...]
             # NIR - RGB
             ndwi = (s2[...,2] - s2[...,7]) / (s2[...,2] + s2[...,7])
+            ndwi = ndwi[np.newaxis, ...]
 
-            stacked = np.dstack([s2, ndvi, ndwi, ndbi]).astype(np.float32)
-
-            # need channels first
-            stacked = np.transpose(stacked, [2,0,1])
+            stacked = np.vstack([s2, ndvi, ndwi, ndbi]).astype(np.float32)
 
             return stacked
 

@@ -18,8 +18,8 @@ seed: 404
 
 model:
   weighted_loss: True
-  backbone:
-    out_channels: 48
+#  backbone:
+#    out_channels: 48
 
 datamodule:
-  batch_size: 128
+  batch_size: 512
