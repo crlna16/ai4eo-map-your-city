@@ -1,0 +1,25 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=example
+
+defaults:
+  - override /datamodule: sentinel2.yaml
+  - override /model: simpleconvnet.yaml
+  - override /trainer: default.yaml
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+# name of the run determines folder name in logs
+name: "sentinel2_convnet"
+
+seed: 404
+
+model:
+  weighted_loss: True
+  backbone:
+    out_channels: 48
+
+datamodule:
+  batch_size: 128
