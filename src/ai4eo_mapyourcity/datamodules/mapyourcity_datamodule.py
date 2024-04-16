@@ -163,7 +163,12 @@ class Sentinel2Dataset(MapYourCityDataset):
         super().__init__(options, split)
 
         self.use_ndvi = options['use_ndvi']
-        # TODO add other bands
+        self.use_ndwi = options['use_ndwi']
+        self.use_ndbi = options['use_ndbi']
+        self.use_bands = options['use_bands']
+
+        self.reference_bands = ['B01','B02', 'B03', 'B04','B05','B06','B07','B08','B8A','B09','B11','B12']
+        self.channel_idx = [self.reference_bands.index(b) for b in self.use_bands]
 
         self.loader = self._sentinel2_loader
 
@@ -186,7 +191,7 @@ class Sentinel2Dataset(MapYourCityDataset):
           Stacked array, channels first (C, W, H)
         '''
         with rasterio.open(path) as f:
-            # TODO add support for selecting bands and indices
+            # Need to calculate indices before selecting channels
             s2 = f.read() * 3e-4
             # NIR - RED
             ndvi = (s2[7] - s2[3]) / (s2[7] + s2[3])
@@ -198,9 +203,15 @@ class Sentinel2Dataset(MapYourCityDataset):
             ndwi = (s2[2] - s2[7]) / (s2[2] + s2[7])
             ndwi = ndwi[np.newaxis, ...]
 
-            stacked = np.nan_to_num(np.vstack([s2, ndvi, ndwi, ndbi]).astype(np.float32))
+            stacked = s2[self.channel_idx]
+            if self.use_ndvi:
+                stacked = np.vstack([stacked, ndvi])
+            if self.use_ndwi:
+                stacked = np.vstack([stacked, ndwi])
+            if self.use_ndbi:
+                stacked = np.vstack([stacked, ndbi])
 
-            return stacked
+            return stacked.astype(np.float32)
 
 class MapYourCityDataModule(L.LightningDataModule):
     '''

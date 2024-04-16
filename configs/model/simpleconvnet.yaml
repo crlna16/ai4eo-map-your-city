@@ -5,9 +5,10 @@ backbone:
   _target_: ai4eo_mapyourcity.models.backbones.SimpleConvNet
   num_classes: ${model.num_classes}
   model_id: simpleconvnet # required for compatibility
-  in_channels: 15
+  in_channels: ${datamodule.dataset_options.in_channels}
   out_channels: 36
   kernel_size: 5
   pool_size: 2
-  mid_units: 512
+  mid_units: 128
   dropout: 0.1
+  input_size: ${datamodule.dataset_options.input_size}

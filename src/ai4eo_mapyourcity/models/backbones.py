@@ -7,6 +7,8 @@ from torch import nn
 
 import timm
 
+import numpy as np
+
 from pytorch_lightning import LightningModule
 
 class TIMMCollection(nn.Module):
@@ -33,6 +35,7 @@ class SimpleConvNet(nn.Module):
     '''
 
     def __init__(self, 
+                 input_size,
                  num_classes,
                  in_channels,
                  out_channels,
@@ -44,7 +47,15 @@ class SimpleConvNet(nn.Module):
                  ):
         super().__init__()
 
-        flattened_size = 6084  # TODO
+        # calculate the flattened size
+        S = input_size - kernel_size + 1
+        S = np.ceil((S - 1) / pool_size)
+        S = S - kernel_size + 1
+        S = np.ceil((S - 1) / pool_size)
+        S = S - kernel_size + 1
+        S = np.ceil((S - 1) / pool_size)
+        flattened_size = int( S * S * out_channels)
+
         kernel_tuple = (kernel_size, kernel_size)
         pool_tuple = (pool_size, pool_size)
 
@@ -53,8 +64,12 @@ class SimpleConvNet(nn.Module):
                          nn.MaxPool2d(pool_tuple),
                          nn.Conv2d(out_channels, out_channels, kernel_tuple),
                          nn.MaxPool2d(pool_tuple),
+                         nn.Conv2d(out_channels, out_channels, kernel_tuple),
+                         nn.MaxPool2d(pool_tuple),
                          nn.Flatten(),
-                         nn.Linear(flattened_size, mid_units),
+                         nn.Linear(flattened_size, 2 * mid_units),
+                         nn.Dropout(dropout),
+                         nn.Linear(2 * mid_units, mid_units),
                          nn.Dropout(dropout),
                          nn.Linear(mid_units, num_classes)
                          )

@@ -18,8 +18,10 @@ seed: 404
 
 model:
   weighted_loss: True
-#  backbone:
-#    out_channels: 48
+  backbone:
+    out_channels: 24
 
 datamodule:
   batch_size: 512
+  dataset_options:
+    use_bands: ['B02', 'B03', 'B04'] # RGB
