@@ -52,8 +52,6 @@ class SimpleConvNet(nn.Module):
         S = np.ceil((S - 1) / pool_size)
         S = S - kernel_size + 1
         S = np.ceil((S - 1) / pool_size)
-        S = S - kernel_size + 1
-        S = np.ceil((S - 1) / pool_size)
         flattened_size = int( S * S * out_channels)
 
         kernel_tuple = (kernel_size, kernel_size)
@@ -61,8 +59,6 @@ class SimpleConvNet(nn.Module):
 
         self.backbone = nn.Sequential(
                          nn.Conv2d(in_channels, out_channels, kernel_tuple),
-                         nn.MaxPool2d(pool_tuple),
-                         nn.Conv2d(out_channels, out_channels, kernel_tuple),
                          nn.MaxPool2d(pool_tuple),
                          nn.Conv2d(out_channels, out_channels, kernel_tuple),
                          nn.MaxPool2d(pool_tuple),
