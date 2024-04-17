@@ -11,5 +11,5 @@ class_weights:
   '4' : 0.116
   '5' : 0.143
   '6' : 0.219
-validation_metric: accuracy
+validation_metric: confusion_matrix
 backbone: null
