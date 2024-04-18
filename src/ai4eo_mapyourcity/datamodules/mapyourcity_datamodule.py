@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
+import os
 import torch
 import numpy as np
-import os
 import pandas as pd
 
 from torchvision.transforms import v2
@@ -209,6 +209,8 @@ class Sentinel2Dataset(MapYourCityDataset):
             if self.use_ndbi:
                 stacked = np.vstack([stacked, ndbi])
 
+            stacked = np.nan_to_num(stacked)
+
             return stacked.astype(np.float32)
 
 class MapYourCityDataModule(L.LightningDataModule):
@@ -234,6 +236,10 @@ class MapYourCityDataModule(L.LightningDataModule):
         self.num_workers = num_workers
         self.pin_memory = pin_memory
         self.dataset_options = dataset_options
+
+        self.train_data = None
+        self.valid_data = None
+        self.test_data = None
 
     def setup(self, stage='fit'):
         '''

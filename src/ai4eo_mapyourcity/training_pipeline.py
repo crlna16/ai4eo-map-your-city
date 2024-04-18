@@ -11,8 +11,9 @@ from lightning import (
     seed_everything,
 )
 from pytorch_lightning.loggers.logger import Logger
-from ai4eo_mapyourcity import utils
 import pandas as pd
+
+from ai4eo_mapyourcity import utils
 
 log = utils.get_logger(__name__)
 
@@ -90,7 +91,9 @@ def train(config: DictConfig) -> Optional[float]:
         log.info("Starting training!")
         train_dataloader = datamodule.train_dataloader()
         valid_dataloader = datamodule.valid_dataloader()
-        trainer.fit(model=model, train_dataloaders=train_dataloader, val_dataloaders=valid_dataloader)
+        trainer.fit(model=model,
+                    train_dataloaders=train_dataloader, 
+                    val_dataloaders=valid_dataloader)
 
         # save predictions for validation set
         trainer.predict(model=model, dataloaders=valid_dataloader, ckpt_path=ckpt_path)
