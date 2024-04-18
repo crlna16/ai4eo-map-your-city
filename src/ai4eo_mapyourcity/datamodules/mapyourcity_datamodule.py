@@ -59,11 +59,8 @@ class MapYourCityDataset(Dataset):
         self.image_paths = [os.path.join(data_path, pid, self.img_file) for pid in self.pids]
 
         # not all folders have a streetview image
-        if self.img_file == 'street.jpg':
-            is_valid = [os.path.exists(imp) for imp in self.image_paths]
-            self.pids = [self.pids[i] for i in range(len(self.pids)) if is_valid[i]]
-            self.labels = [self.labels[i] for i in range(len(self.labels)) if is_valid[i]]
-            self.image_paths = [self.image_paths[i] for i in range(len(self.image_paths)) if is_valid[i]]
+        if split == 'test' and self.img_file == 'street.jpg':
+            self.fake_streetview = Image.fromarray(np.zeros([512,1024,3]).astype(np.uint8))
 
     def __len__(self):
         return len(self.labels)
@@ -129,6 +126,10 @@ class PhotoDataset(MapYourCityDataset):
         self.transforms = v2.Compose(trafo0 + trafo1 + trafo2)
 
     def _photo_loader(self, path):
+        if not os.path.exists(path):
+            img = self.fake_streetview
+            return img.convert("RGB")
+
         with open(path, "rb") as f:
             img = Image.open(f)
             img.load()
