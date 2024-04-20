@@ -41,7 +41,7 @@ class MapYourCityDataset(Dataset):
 
         # list of files
         if split in ['train', 'valid']:
-            csv_path = os.path.join(options["fold_dir"], f'split_{split}_{options["fold"]}.csv')
+            csv_path = os.path.join(options["fold_dir"], options["fold_key"], f'split_{split}_{options["fold"]}.csv')
             data_path = os.path.join(options["data_dir"], 'train', 'data')
         elif split == 'test':
             csv_path = os.path.join(options["data_dir"], 'test', 'test-set.csv')

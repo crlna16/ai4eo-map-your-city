@@ -6,5 +6,5 @@ tensorboard:
   name: null
   version: ${name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
   log_graph: False
-  default_hp_metric: True
+  default_hp_metric: False
   prefix: ""
