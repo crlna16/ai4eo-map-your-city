@@ -36,6 +36,14 @@ class MapYourCityDataset(Dataset):
         super().__init__()
 
         self.img_file = options['img_file']
+
+        # get config from pretrained model 
+        if options['model_id'] is None:
+            self.config = dict(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+        else:
+            self.config = timm.data.resolve_model_data_config(options['model_id'])
+            self.input_size = int( self.config['input_size'][1] / self.config['crop_pct'] )
+
         self.loader = None # assigned by subclass
         self.transforms = None # assigned by subclass
 
@@ -95,33 +103,26 @@ class PhotoDataset(MapYourCityDataset):
 
         self.loader = self._photo_loader
 
-        # assign transforms
-        if options['model_id'] is None:
-            config = dict(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
-        else:
-            config = timm.data.resolve_model_data_config(options['model_id'])
-            input_size = int( config['input_size'][1] / config['crop_pct'] )
-
         match options['transform']:
             case 'default':
                 if split == 'train':
-                    trafo1 = [ v2.RandomResizedCrop(size=(input_size, input_size), scale=(0.08, 1.0), ratio=(0.75, 1.3333), interpolation=3),
+                    trafo1 = [ v2.RandomResizedCrop(size=(self.input_size, self.input_size), scale=(0.08, 1.0), ratio=(0.75, 1.3333), interpolation=3),
                                v2.RandomHorizontalFlip(p=0.5),
                                v2.ColorJitter(brightness=(0.6, 1.4), contrast=(0.6, 1.4), saturation=(0.6, 1.4), hue=None),]
                 elif split in ['valid', 'test']:
-                    trafo1 = [ v2.Resize(size=(input_size, input_size), interpolation=3),]
+                    trafo1 = [ v2.Resize(size=(self.input_size, self.input_size), interpolation=3),]
 
             case 'resize':
-                trafo1 = [ v2.Resize(size=(input_size, input_size), interpolation=2), ]
+                trafo1 = [ v2.Resize(size=(self.input_size, self.input_size), interpolation=2), ]
 
             case 'center_crop':
-                trafo1 = [ v2.CenterCrop(size=(input_size, input_size)), ]
+                trafo1 = [ v2.CenterCrop(size=(self.input_size, self.input_size)), ]
 
             case _:
                 raise ValueError('Invalid choice:', transform)
 
         trafo0 = [v2.ToImage()] 
-        trafo2 = [v2.ToDtype(torch.float32, scale=True), v2.Normalize(mean=config['mean'], std=config['std'])]
+        trafo2 = [v2.ToDtype(torch.float32, scale=True), v2.Normalize(mean=self.config['mean'], std=self.config['std'])]
 
         self.transforms = v2.Compose(trafo0 + trafo1 + trafo2)
 
@@ -161,28 +162,74 @@ class Sentinel2Dataset(MapYourCityDataset):
                  ):
         super().__init__(options, split)
 
-        self.use_ndvi = options['use_ndvi']
-        self.use_ndwi = options['use_ndwi']
-        self.use_ndbi = options['use_ndbi']
-        self.use_bands = options['use_bands']
-
         self.reference_bands = ['B01','B02', 'B03', 'B04','B05','B06','B07','B08','B8A','B09','B11','B12']
-        self.channel_idx = [self.reference_bands.index(b) for b in self.use_bands]
 
-        self.loader = self._sentinel2_loader
+        match options['transform']:
+            case 'default':
+                self.use_ndvi = options['use_ndvi']
+                self.use_ndwi = options['use_ndwi']
+                self.use_ndbi = options['use_ndbi']
+                self.use_bands = options['use_bands']
 
-        mean = [0., 0., 0.]
-        std = [1., 1., 1.]
+                self.channel_idx = [self.reference_bands.index(b) for b in self.use_bands]
 
-        trafo0 = [] 
-        trafo1 = [] # TODO
-        trafo2 = [v2.ToDtype(torch.float32, scale=True)]
+                self.loader = self._sentinel2_loader
 
-        self.transforms = v2.Compose(trafo0 + trafo1 + trafo2)
+                mean = [0., 0., 0.]
+                std = [1., 1., 1.]
+
+                # TODO add augmentation
+                self.transforms = v2.ToDtype(torch.float32, scale=True)
+            case 'patch':
+                # Create a 3 x 128 x 128 patch
+                self.loader = self._sentinel2_patch_loader
+                # TODO add augmentation
+                self.transforms = v2.Compose([v2.ToImage(),
+                                              v2.Resize(self.input_size), 
+                                              v2.ToDtype(torch.float32, scale=True)])
+                                              #v2.Normalize(mean=self.config['mean'], std=self.config['std'])])
+
+    def _sentinel2_patch_loader(self, path):
+        '''
+        Load Sentinel-2 and create patches by stacking the 12 
+        channels side by side --> 3 x 128 x 128
+
+        The channels with 60m resolution are replaced by
+        normalized indices
+        
+        Apply factor of 3 x 10^-4 as in demo notebook
+        
+        Returns:
+          Stacked array, channels first (C, W, H)
+        '''
+        with rasterio.open(path) as f:
+            # Need to calculate indices before selecting channels
+            s2 = f.read() * 3e-4
+
+        # NIR - RED
+        ndvi = (s2[7] - s2[3]) / (s2[7] + s2[3])
+        #ndvi = ndvi[np.newaxis, ...]
+        # SWIR - NIR
+        ndbi = (s2[10] - s2[7]) / (s2[10] + s2[7])
+        #ndbi = ndbi[np.newaxis, ...]
+        # NIR - RGB
+        ndwi = (s2[2] - s2[7]) / (s2[2] + s2[7])
+        #ndwi = ndwi[np.newaxis, ...]
+
+        p_tl = np.stack([ndvi, ndwi, ndbi])
+        p_tr = s2[[3,2,1]] # top right - RGB
+        p_bl = s2[[4,5,6]] # bottom left - Vegetation red edge
+        p_br = s2[[8, 10, 11]] # bottom right - NIR/SWIR
+
+        patch = np.dstack([np.hstack([p_tl, p_tr]), np.hstack([p_bl, p_br])])
+        patch = np.nan_to_num(patch).transpose(2,1,0)
+
+        return patch
+
 
     def _sentinel2_loader(self, path):
         '''
-        Load Sentinel-2 and extract the RGB channels
+        Load Sentinel-2 and extract the requested channels
         
         Apply factor of 3 x 10^-4 as in demo notebook
         

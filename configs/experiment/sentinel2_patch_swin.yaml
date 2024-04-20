@@ -1,0 +1,27 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=example
+
+defaults:
+  - override /datamodule: sentinel2.yaml
+  - override /model: timm.yaml
+  - override /trainer: default.yaml
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+# name of the run determines folder name in logs
+name: "sentinel2_patch_swin"
+
+seed: 404
+
+model:
+  weighted_loss: True
+  backbone:
+    model_id: swinv2_tiny_window16_256.ms_in1k
+
+datamodule:
+  batch_size: 32
+  dataset_options:
+    transform: patch
