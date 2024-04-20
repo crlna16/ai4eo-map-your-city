@@ -8,5 +8,5 @@ dataset_options:
   data_dir: ${data_dir} # data_dir is specified in train.yaml
   fold: ${fold} # is specified in train.yaml
   fold_dir: ${fold_dir}
-  fold_key: leave_three_cities_out
+  fold_key: random_stratified_labels_cities
   model_id: ${model.backbone.model_id}
