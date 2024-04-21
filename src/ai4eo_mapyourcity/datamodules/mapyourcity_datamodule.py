@@ -81,16 +81,16 @@ class MapYourCityDataset(Dataset):
 
         return img, label, pid
 
-class CombinedDataset(MapYourCityDataset):
+class CombinedDataset(Dataset):
     '''
-    TODO
+    Combines two or three datasets
     '''
 
     def __init__(self,
                  options,
                  split='train'
                  ):
-        super().__init__(options, split)
+        super().__init__()
 
         self.use_topview = options['use_topview']
         self.topview_options = options['dataset_options_topview']
@@ -99,104 +99,38 @@ class CombinedDataset(MapYourCityDataset):
         self.use_sentinel2 = options['use_sentinel2']
         self.sentinel2_options = options['dataset_options_sentinel2']
 
-        self.loader = self._combined_loader
+        if self.use_topview:
+            self.topview_dataset = PhotoDataset({**options, **options['dataset_options_topview']}, split)
+        if self.use_streetview:
+            self.streetview_dataset = PhotoDataset({**options, **options['dataset_options_streetview']}, split)
+        if self.use_sentinel2:
+            self.sentinel2_dataset = Sentinel2Dataset({**options, **options['dataset_options_sentinel2']}, split)
+
         self.sources = int(self.use_topview) + int(self.use_streetview) + int(self.use_sentinel2)
 
-        # TODO transforms
-        match options['transform']:
-            case 'default':
-                if split == 'train':
-                    trafo1 = [ v2.RandomResizedCrop(size=(self.input_size, self.input_size), scale=(0.08, 1.0), ratio=(0.75, 1.3333), interpolation=3),
-                               v2.RandomHorizontalFlip(p=0.5),
-                               v2.ColorJitter(brightness=(0.6, 1.4), contrast=(0.6, 1.4), saturation=(0.6, 1.4), hue=None),]
-                elif split in ['valid', 'test']:
-                    trafo1 = [ v2.Resize(size=(self.input_size, self.input_size), interpolation=3),]
+    def __len__(self):
+        if self.use_topview:
+            return len(self.topview_dataset.labels)
+        elif self.use_streetview:
+            return len(self.streetview_dataset.labels)
+        elif self.use_sentinel2:
+            return len(self.sentinel2_dataset.labels)
 
-            case 'resize':
-                trafo1 = [ v2.Resize(size=(self.input_size, self.input_size), interpolation=3), ]
-
-            case _:
-                raise ValueError('Invalid choice:', transform)
-
-        trafo0 = [v2.ToImage()] 
-        trafo2 = [v2.ToDtype(torch.float32, scale=True), v2.Normalize(mean=self.config['mean'], std=self.config['std'])]
-
-        self.transforms = v2.Compose(trafo0 + trafo1 + trafo2)
-
-    def _combined_loader(self, path):
-        '''
-        Loader for different samples in one PID
-
-        Returns: 
-            list / tuple TODO of images at location
-        '''
+    def __getitem__(self, idx):
 
         imgs = []
 
         if self.use_topview:
-            with open(os.path.join(path, self.topview_options['img_file']), "rb") as f:
-                img = Image.open(f)
-                img.load()
-
-            imgs.append(img.convert("RGB"))
-
+            img, label, pid = self.topview_dataset.__getitem__(idx)
+            imgs.append(img)
         if self.use_streetview:
-            if not os.path.exists(os.path.join(path, self.streetview_options['img_file'])):
-                img = self.fake_streetview
-                return img.convert("RGB")
-
-            with open(os.path.join(path, self.streetview_options['img_file']), "rb") as f:
-                img = Image.open(f)
-                img.load()
-
-            imgs.append(img.convert("RGB"))
-
+            img, label, pid = self.streetview_dataset.__getitem__(idx)
+            imgs.append(img)
         if self.use_sentinel2:
-            
-            with rasterio.open(os.path.join(path, self.sentinel2_options['img_file'])) as f:
-                # Need to calculate indices before selecting channels
-                s2 = f.read() * 3e-4
+            img, label, pid = self.sentinel2_dataset.__getitem__(idx)
+            imgs.append(img)
 
-            # NIR - RED
-            ndvi = (s2[7] - s2[3]) / (s2[7] + s2[3])
-            #ndvi = ndvi[np.newaxis, ...]
-            # SWIR - NIR
-            ndbi = (s2[10] - s2[7]) / (s2[10] + s2[7])
-            #ndbi = ndbi[np.newaxis, ...]
-            # NIR - RGB
-            ndwi = (s2[2] - s2[7]) / (s2[2] + s2[7])
-            #ndwi = ndwi[np.newaxis, ...]
-
-            p_tl = np.stack([ndvi, ndwi, ndbi])
-            p_tr = s2[[3,2,1]] # top right - RGB
-            p_bl = s2[[4,5,6]] # bottom left - Vegetation red edge
-            p_br = s2[[8, 10, 11]] # bottom right - NIR/SWIR
-
-            patch = np.dstack([np.hstack([p_tl, p_tr]), np.hstack([p_bl, p_br])])
-            patch = np.nan_to_num(patch).transpose(2,1,0)
-
-            imgs.append( patch )
-
-        return tuple(imgs)
-
-    def __getitem__(self, idx):
-        label = self.labels[idx]
-        pid = self.pids[idx]
-
-        if self.sources == 2:
-            img0, img1 = self.loader(self.image_roots[idx])
-            img0 = self.transforms(img0)
-            img1 = self.transforms(img1)
-            
-            return (img0, img1), label, pid
-
-        elif self.sources == 3:
-            img0, img1, img2 = self.loader(self.image_roots[idx])
-            img0 = self.transforms(img0)
-            img1 = self.transforms(img1)
-            img2 = self.transforms(img2)
-
-            return (img0, img1, img2), label, pid
+        return tuple(imgs), label, pid 
 
 class PhotoDataset(MapYourCityDataset):
     '''
