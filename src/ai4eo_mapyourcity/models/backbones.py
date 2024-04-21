@@ -47,11 +47,12 @@ class TIMMCollectionCombined(nn.Module):
         self.mid_features = mid_features
         self.num_classes = num_classes
         
-        if self.num_models == 2:
-            self.model1 = timm.create_model(model_id, pretrained=is_pretrained, num_classes=0)
+        self.model1 = timm.create_model(model_id, pretrained=is_pretrained, num_classes=0)
+
+        if self.num_models >= 2:
             self.model2 = timm.create_model(model_id, pretrained=is_pretrained, num_classes=0)
 
-        if self.num_models == 3:
+        if self.num_models >= 3:
             self.model3 = timm.create_model(model_id, pretrained=is_pretrained, num_classes=0)
 
         self.head = nn.Sequential(nn.Flatten(),
@@ -63,7 +64,7 @@ class TIMMCollectionCombined(nn.Module):
         Combine models before the original classification head stage
         '''
 
-        if self.num_models == 2:
+        if self.num_models >= 2:
             embeddings1 = self.model1(x[0])
             embeddings2 = self.model2(x[1])
             xcat = torch.cat([embeddings1, embeddings2])
