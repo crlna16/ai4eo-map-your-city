@@ -188,7 +188,7 @@ class CombinedDataset(MapYourCityDataset):
             img0 = self.transforms(img0)
             img1 = self.transforms(img1)
             
-            return img0, img1, label, pid
+            return (img0, img1), label, pid
 
         elif self.sources == 3:
             img0, img1, img2 = self.loader(self.image_roots[idx])
@@ -196,7 +196,7 @@ class CombinedDataset(MapYourCityDataset):
             img1 = self.transforms(img1)
             img2 = self.transforms(img2)
 
-            return img0, img1, img2, label, pid
+            return (img0, img1, img2), label, pid
 
 class PhotoDataset(MapYourCityDataset):
     '''

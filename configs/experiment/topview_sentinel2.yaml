@@ -20,6 +20,7 @@ model:
   weighted_loss: True
   backbone:
     model_id: swinv2_tiny_window16_256.ms_in1k
+    num_models: 2
 
 datamodule:
   batch_size: 32

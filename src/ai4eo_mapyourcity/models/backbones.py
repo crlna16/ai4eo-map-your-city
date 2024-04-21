@@ -27,6 +27,53 @@ class TIMMCollection(nn.Module):
     def forward(self, x):
         return self.model(x)
 
+class TIMMCollectionCombined(nn.Module):
+    '''
+    Pretrained TIMM Models
+
+    '''
+    def __init__(self,
+                 num_classes,
+                 model_id,
+                 is_pretrained,
+                 num_models,
+                 out_features,
+                 mid_features
+                 ):
+        super().__init__()
+
+        self.num_models = num_models
+        self.out_features = out_features
+        self.mid_features = mid_features
+        self.num_classes = num_classes
+        
+        if self.num_models == 2:
+            self.model1 = timm.create_model(model_id, pretrained=is_pretrained, num_classes=0)
+            self.model2 = timm.create_model(model_id, pretrained=is_pretrained, num_classes=0)
+
+        if self.num_models == 3:
+            self.model3 = timm.create_model(model_id, pretrained=is_pretrained, num_classes=0)
+
+        self.head = nn.Sequential(nn.Flatten(),
+                                  nn.Linear(self.num_models * self.out_features, self.mid_features),
+                                  nn.Linear(self.mid_features, self.num_classes))
+
+    def forward(self, x):
+        '''
+        Combine models before the original classification head stage
+        '''
+
+        if self.num_models == 2:
+            embeddings1 = self.model1(x[0])
+            embeddings2 = self.model2(x[1])
+            xcat = torch.cat([embeddings1, embeddings2])
+
+        if self.num_models == 3:
+            embeddings3 = self.model3(x[2])
+            xcat = torch.cat([xcat, embeddings3])
+
+        # common classification head
+        return self.head(xcat.reshape(-1, self.num_models * self.out_features))
 
 class SimpleConvNet(nn.Module):
     '''
