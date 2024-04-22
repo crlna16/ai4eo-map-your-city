@@ -8,3 +8,8 @@ defaults:
 trainer:
   max_epochs: 20
   overfit_batches: 3
+  log_every_n_steps: 1
+
+callbacks:
+  early_stopping:
+    patience: ${trainer.max_epochs}

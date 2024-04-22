@@ -8,4 +8,4 @@ backbone:
   num_classes: ${model.num_classes}
   num_models: 3 # How many models to combine
   out_features: 768 # from pretrained model
-  mid_features: 512
+  fusion_mode: concatenate
