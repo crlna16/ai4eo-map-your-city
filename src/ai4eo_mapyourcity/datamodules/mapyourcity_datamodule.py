@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+'''Datamodule for the MapYourCity challenge'''
+
+from typing import Dict
 
 import os
 import torch
@@ -16,35 +19,57 @@ import timm
 
 class MapYourCityDataset(Dataset):
     '''
-    Dataset for MapYourCity data
+    Base class for MapYourCity challenge data.
 
-    Base class
-
-    Arguments:
-        options - dictionary with options
-        split - data split (default: train)
+    Attributes:
+        img_file (str): Image file name.
+        config (Dict): Model config. Assigned from pretrained model if available.
+        input_size (int): Image input size.
+        transforms (torchvision.v2.Compose): Composition of transforms to apply on the image.
+        pids (List): List of all PIDs.
+        labels (List): List of all labels.
+        image_paths (List): List of all image paths.
+        image_roots (List): List of all image root folders.
+        fake_streetview (PIL.Image): Streetview photo to use in case of missing modality.
     '''
     def __init__(self,
                  options,
                  split='train'
                  ):
+        '''
+        Initialize the MapYourCityDataset.
+
+        If the model config specifies a pretrained TIMM model, retrieve its configuration.
+        Else assign a config for consistency.
+
+        Construct the image transforms based on the config.
+
+        Construct all paths to image root directories for the given data split.
+
+        Store all PIDs and labels.
+
+        Arguments:
+            options (Dict): Dictionary with dataset options.
+            split (str, optional): Dataset split. Defaults to 'train'.
+        '''
         super().__init__()
 
         self.img_file = options['img_file']
 
-        # get config from pretrained model 
+        # get config from pretrained model
         if options['model_id'] is None:
-            self.config = dict(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+            self.config = {'mean':[0.5, 0.5, 0.5], 'std':[0.5, 0.5, 0.5]}
         else:
             self.config = timm.data.resolve_model_data_config(options['model_id'])
             self.input_size = int( self.config['input_size'][1] / self.config['crop_pct'] )
 
-        self.loader = None # assigned by subclass
-        self.transforms = None # assigned by subclass
+        self.transforms = lambda x: x  # assigned by subclass # TODO move to function
 
         # list of files
         if split in ['train', 'valid']:
-            csv_path = os.path.join(options["fold_dir"], options["fold_key"], f'split_{split}_{options["fold"]}.csv')
+            csv_path = os.path.join(options["fold_dir"],
+                                    options["fold_key"],
+                                    f'split_{split}_{options["fold"]}.csv')
             data_path = os.path.join(options["data_dir"], 'train', 'data')
         elif split == 'test':
             csv_path = os.path.join(options["data_dir"], 'test', 'test-set.csv')
@@ -66,10 +91,39 @@ class MapYourCityDataset(Dataset):
         if split == 'test' and self.img_file == 'street.jpg':
             self.fake_streetview = Image.fromarray(np.zeros([512,1024,3]).astype(np.uint8))
 
+    def loader(self, path):
+        '''
+        Open the image file at path.
+
+        Needs to be implemented in any subclass.
+
+        Args:
+            path (str): Full path to image file.
+
+        Returns:
+            Image.
+        '''
+        raise NotImplementedError('Loader needs to be implemented in the subclass.')
+
     def __len__(self):
+        '''
+        Returns:
+            int: Length of the dataset.
+        '''
         return len(self.labels)
 
     def __getitem__(self, idx):
+        '''
+        Retrieve an item from the dataset.
+
+        Args:
+            idx (int): Index to retrieve.
+
+        Returns:
+            PIL.Image: Transformed image.
+            int: Class label.
+            str: Sample PID.
+        '''
         img = self.transforms( self.loader( self.image_paths[idx] ) )
         label = self.labels[idx]
         pid = self.pids[idx]
@@ -78,13 +132,32 @@ class MapYourCityDataset(Dataset):
 
 class CombinedDataset(Dataset):
     '''
-    Combines two or three datasets
+    Dataset for two or three input modalities.
+
+    Attributes:
+        use_topview (bool): If True, use topview (orthophoto) samples.
+        topview_options (Dict): Dictionary with options to create topview dataset.
+        topview_dataset (PhotoDataset): Topview dataset.
+        use_streetview (bool): If True, use streetview samples.
+        streetview_options (Dict): Dictionary with options to create streetview dataset.
+        streetview_dataset (PhotoDataset): Streetview dataset.
+        use_sentinel2 (bool): If True, use Sentinel-2 samples.
+        sentinel2_options (Dict): Dictionary with options to create Sentinel-2 dataset.
+        sentinel2_dataset (Sentinel2Dataset): Sentinel-2 dataset.
+        sources (int): Number of modalities.
     '''
 
     def __init__(self,
                  options,
                  split='train'
                  ):
+        '''
+        Create datasets for topview, streetview, and Sentinel-2 data as specified.
+
+        Arguments:
+            options (Dict): Dictionary with dataset options.
+            split (str, optional): Dataset split. Defaults to 'train'.
+        '''
         super().__init__()
 
         self.use_topview = options['use_topview']
@@ -95,21 +168,29 @@ class CombinedDataset(Dataset):
         self.sentinel2_options = options['dataset_options_sentinel2']
 
         if self.use_topview:
-            self.topview_dataset = PhotoDataset({**options, **options['dataset_options_topview']}, split)
+            self.topview_dataset = PhotoDataset({**options, **options['dataset_options_topview']},
+                                                split)
         if self.use_streetview:
-            self.streetview_dataset = PhotoDataset({**options, **options['dataset_options_streetview']}, split)
+            self.streetview_dataset = PhotoDataset({**options, **options['dataset_options_streetview']},
+                                                   split)
         if self.use_sentinel2:
-            self.sentinel2_dataset = Sentinel2Dataset({**options, **options['dataset_options_sentinel2']}, split)
+            self.sentinel2_dataset = Sentinel2Dataset({**options, **options['dataset_options_sentinel2']},
+                                                      split)
 
         self.sources = int(self.use_topview) + int(self.use_streetview) + int(self.use_sentinel2)
 
     def __len__(self):
+        '''
+        Returns:
+            int: Length of the dataset.
+        '''
         if self.use_topview:
             return len(self.topview_dataset.labels)
-        elif self.use_streetview:
+        if self.use_streetview:
             return len(self.streetview_dataset.labels)
-        elif self.use_sentinel2:
+        if self.use_sentinel2:
             return len(self.sentinel2_dataset.labels)
+        return None
 
     def __getitem__(self, idx):
 
@@ -125,7 +206,7 @@ class CombinedDataset(Dataset):
             img, label, pid = self.sentinel2_dataset.__getitem__(idx)
             imgs.append(img)
 
-        return tuple(imgs), label, pid 
+        return tuple(imgs), label, pid
 
 class PhotoDataset(MapYourCityDataset):
     '''
@@ -143,14 +224,18 @@ class PhotoDataset(MapYourCityDataset):
                  ):
         super().__init__(options, split)
 
-        self.loader = self._photo_loader
-
         match options['transform']:
             case 'default':
                 if split == 'train':
-                    trafo1 = [ v2.RandomResizedCrop(size=(self.input_size, self.input_size), scale=(0.08, 1.0), ratio=(0.75, 1.3333), interpolation=3),
+                    trafo1 = [ v2.RandomResizedCrop(size=(self.input_size, self.input_size),
+                                                    scale=(0.08, 1.0),
+                                                    ratio=(0.75, 1.3333),
+                                                    interpolation=3),
                                v2.RandomHorizontalFlip(p=0.5),
-                               v2.ColorJitter(brightness=(0.6, 1.4), contrast=(0.6, 1.4), saturation=(0.6, 1.4), hue=None),]
+                               v2.ColorJitter(brightness=(0.6, 1.4),
+                                              contrast=(0.6, 1.4),
+                                              saturation=(0.6, 1.4),
+                                              hue=None),]
                 elif split in ['valid', 'test']:
                     trafo1 = [ v2.Resize(size=(self.input_size, self.input_size), interpolation=3),]
 
@@ -161,14 +246,15 @@ class PhotoDataset(MapYourCityDataset):
                 trafo1 = [ v2.CenterCrop(size=(self.input_size, self.input_size)), ]
 
             case _:
-                raise ValueError('Invalid choice:', transform)
+                raise ValueError('Invalid choice:', options['transform'])
 
-        trafo0 = [v2.ToImage()] 
-        trafo2 = [v2.ToDtype(torch.float32, scale=True), v2.Normalize(mean=self.config['mean'], std=self.config['std'])]
+        trafo0 = [v2.ToImage()]
+        trafo2 = [v2.ToDtype(torch.float32, scale=True),
+                  v2.Normalize(mean=self.config['mean'], std=self.config['std'])]
 
         self.transforms = v2.Compose(trafo0 + trafo1 + trafo2)
 
-    def _photo_loader(self, path):
+    def loader(self, path):
         if not os.path.exists(path):
             img = self.fake_streetview
             return img.convert("RGB")
@@ -204,7 +290,8 @@ class Sentinel2Dataset(MapYourCityDataset):
                  ):
         super().__init__(options, split)
 
-        self.reference_bands = ['B01','B02', 'B03', 'B04','B05','B06','B07','B08','B8A','B09','B11','B12']
+        self.reference_bands = ['B01','B02', 'B03', 'B04','B05','B06',
+                                'B07','B08','B8A','B09','B11','B12']
 
         match options['transform']:
             case 'default':
@@ -215,26 +302,51 @@ class Sentinel2Dataset(MapYourCityDataset):
 
                 self.channel_idx = [self.reference_bands.index(b) for b in self.use_bands]
 
-                self.loader = self._sentinel2_loader
-
                 mean = [0., 0., 0.]
                 std = [1., 1., 1.]
 
-                # TODO add augmentation
                 self.transforms = v2.ToDtype(torch.float32, scale=True)
             case 'patch':
                 # Create a 3 x 128 x 128 patch
                 self.loader = self._sentinel2_patch_loader
                 if split == 'train':
-                    trafo1 = [ v2.Resize(size=(self.input_size, self.input_size), interpolation=3),
-                               v2.ColorJitter(brightness=(0.6, 1.4), contrast=(0.6, 1.4), saturation=(0.6, 1.4), hue=None),]
+                    trafo1 = [ v2.Resize(size=(self.input_size, self.input_size),
+                                         interpolation=3),
+                               v2.ColorJitter(brightness=(0.6, 1.4),
+                                              contrast=(0.6, 1.4),
+                                              saturation=(0.6, 1.4),
+                                              hue=None),]
                 elif split in ['valid', 'test']:
                     trafo1 = [ v2.Resize(size=(self.input_size, self.input_size), interpolation=3),]
 
-                trafo0 = [v2.ToImage()] 
-                trafo2 = [v2.ToDtype(torch.float32, scale=True), v2.Normalize(mean=self.config['mean'], std=self.config['std'])]
+                trafo0 = [v2.ToImage()]
+                trafo2 = [v2.ToDtype(torch.float32, scale=True),
+                          v2.Normalize(mean=self.config['mean'], std=self.config['std'])]
 
                 self.transforms = v2.Compose(trafo0 + trafo1 + trafo2)
+
+    def loader(self, path):
+        '''
+        Open the image file at path.
+
+        Returns the image file as patch or sub-selection of channels.
+
+        TODO separate the load logic from the patch logic.
+
+        Args:
+            path (str): Full path to image file.
+
+        Returns:
+            Image.
+        '''
+
+        match options['transform']:
+            case 'default':
+                return self._sentinel2_loader(path)
+            case 'patch':
+                return self._sentinel2_patch_loader(path)
+            case _:
+                raise ValueError('Invalid transform option')
 
     def _sentinel2_patch_loader(self, path):
         '''
