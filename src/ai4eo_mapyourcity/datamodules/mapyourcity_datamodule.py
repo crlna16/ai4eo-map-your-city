@@ -21,13 +21,8 @@ class MapYourCityDataset(Dataset):
     Base class
 
     Arguments:
-      data_path (str) : data root path
-      csv_path (str) : csv file describing the split
-      img_type (str) : choice of ['streetview', 'topview', 'sentinel-2'] TODO
-      transform (str) : choice of ['default', 'resize', 'center_crop']
-      model (str) : timm model identifier
-      is_training (bool) : if True, apply data augmentation (applies to default case only)
-
+        options - dictionary with options
+        split - data split (default: train)
     '''
     def __init__(self,
                  options,
