@@ -37,6 +37,8 @@ class TIMMCollectionCombined(nn.Module):
     - average: calculate the average of the embeddings of all models, position-wise
       , apply classification layer
     - sum: position-wise sum, apply classification layer
+    - learned_weighted_average: average with learnable weights
+    - attention: one self-attention layer, then average
 
     '''
     def __init__(self,
@@ -62,18 +64,25 @@ class TIMMCollectionCombined(nn.Module):
         if self.num_models >= 3:
             self.model3 = timm.create_model(model_id, pretrained=is_pretrained, num_classes=0)
 
+        self.fusion = nn.Module()
+
         match self.fusion_mode:
             case 'concatenate':
-                self.head = nn.Linear(self.num_models * self.out_features, self.num_classes)
+                self.fusion.head = nn.Linear(self.num_models * self.out_features, self.num_classes)
             case 'average':
-                self.head = nn.Linear(self.out_features, self.num_classes)
+                self.fusion.head = nn.Linear(self.out_features, self.num_classes)
             case 'sum':
-                self.head = nn.Linear(self.out_features, self.num_classes)
+                self.fusion.head = nn.Linear(self.out_features, self.num_classes)
+            case 'learned_weighted_average':
+                self.fusion.weights = nn.ParameterList([nn.Parameter(torch.rand(self.num_models))])
+                self.fusion.head = nn.Sequential(nn.LayerNorm(self.out_features), nn.Linear(self.out_features, self.num_classes))
             case 'attention':
-                self.extra_attention = nn.TransformerEncoderLayer(self.out_features, 8, 512, batch_first=True)
-                self.head = nn.Linear(self.out_features, self.num_classes)
+                self.fusion.extra_attention = nn.TransformerEncoderLayer(self.out_features, 8, 512, batch_first=True)
+                self.fusion.head = nn.Linear(self.out_features, self.num_classes)
             case _:
                 raise ValueError('Invalid fusion mode: ', self.fusion_mode)
+
+        self.add_module('fusion', self.fusion)
 
 
     def forward(self, x):
@@ -93,20 +102,25 @@ class TIMMCollectionCombined(nn.Module):
         match self.fusion_mode:
             case 'concatenate':
                 # common classification head
-                return self.head(xcat)
+                return self.fusion.head(xcat)
             case 'average':
                 xcat = xcat.reshape(-1, self.num_models, self.out_features)
                 xcat = torch.mean(xcat, axis=1)
-                return self.head(xcat)
+                return self.fusion.head(xcat)
             case 'sum':
                 xcat = xcat.reshape(-1, self.num_models, self.out_features)
                 xcat = torch.sum(xcat, axis=1)
-                return self.head(xcat)
+                return self.fusion.head(xcat)
+            case 'learned_weighted_average':
+                xcat = xcat.reshape(-1, self.num_models, self.out_features)
+                xcat = torch.einsum('bij,i -> bij', xcat, self.fusion.weights[0])
+                xcat = torch.mean(xcat, axis=1)
+                return self.fusion.head(xcat)
             case 'attention':
                 xcat = xcat.reshape(-1, self.num_models, self.out_features)
-                xcat = self.extra_attention(xcat)
+                xcat = self.fusion.extra_attention(xcat)
                 xcat = torch.sum(xcat, axis=1)
-                return self.head(xcat)
+                return self.fusion.head(xcat)
                 
 
 class SimpleConvNet(nn.Module):

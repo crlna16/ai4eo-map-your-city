@@ -230,11 +230,16 @@ class Sentinel2Dataset(MapYourCityDataset):
             case 'patch':
                 # Create a 3 x 128 x 128 patch
                 self.loader = self._sentinel2_patch_loader
-                # TODO add augmentation
-                self.transforms = v2.Compose([v2.ToImage(),
-                                              v2.Resize(self.input_size), 
-                                              v2.ToDtype(torch.float32, scale=True)])
-                                              #v2.Normalize(mean=self.config['mean'], std=self.config['std'])])
+                if split == 'train':
+                    trafo1 = [ v2.Resize(size=(self.input_size, self.input_size), interpolation=3),
+                               v2.ColorJitter(brightness=(0.6, 1.4), contrast=(0.6, 1.4), saturation=(0.6, 1.4), hue=None),]
+                elif split in ['valid', 'test']:
+                    trafo1 = [ v2.Resize(size=(self.input_size, self.input_size), interpolation=3),]
+
+                trafo0 = [v2.ToImage()] 
+                trafo2 = [v2.ToDtype(torch.float32, scale=True), v2.Normalize(mean=self.config['mean'], std=self.config['std'])]
+
+                self.transforms = v2.Compose(trafo0 + trafo1 + trafo2)
 
     def _sentinel2_patch_loader(self, path):
         '''
