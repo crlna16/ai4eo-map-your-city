@@ -37,6 +37,7 @@ class TIMMCollectionCombined(nn.Module):
     - average: calculate the average of the embeddings of all models, position-wise
       , apply classification layer
     - sum: position-wise sum, apply classification layer
+    - max: position-wise max, apply classification layer
     - learned_weighted_average: average with learnable weights
     - attention: one self-attention layer, then average
 
@@ -73,10 +74,13 @@ class TIMMCollectionCombined(nn.Module):
                 self.fusion.head = nn.Linear(self.out_features, self.num_classes)
             case 'sum':
                 self.fusion.head = nn.Linear(self.out_features, self.num_classes)
+            case 'max':
+                self.fusion.head = nn.Linear(self.out_features, self.num_classes)
             case 'learned_weighted_average':
                 self.fusion.weights = nn.ParameterList([nn.Parameter(torch.rand(self.num_models))])
                 self.fusion.head = nn.Sequential(nn.LayerNorm(self.out_features), nn.Linear(self.out_features, self.num_classes))
             case 'attention':
+            # TODO https://github.com/facebookresearch/multimodal/blob/main/torchmultimodal/modules/fusions/attention_fusion.py
                 self.fusion.extra_attention = nn.TransformerEncoderLayer(self.out_features, 8, 512, batch_first=True)
                 self.fusion.head = nn.Linear(self.out_features, self.num_classes)
             case _:
@@ -110,6 +114,10 @@ class TIMMCollectionCombined(nn.Module):
             case 'sum':
                 xcat = xcat.reshape(-1, self.num_models, self.out_features)
                 xcat = torch.sum(xcat, axis=1)
+                return self.fusion.head(xcat)
+            case 'max':
+                xcat = xcat.reshape(-1, self.num_models, self.out_features)
+                xcat = torch.max(xcat, axis=1).values
                 return self.fusion.head(xcat)
             case 'learned_weighted_average':
                 xcat = xcat.reshape(-1, self.num_models, self.out_features)
