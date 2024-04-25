@@ -1,26 +1,35 @@
-from typing import Any, List
+'''Backbones for MapYourCity challenge'''
+
 
 import torch
-from torch.nn import functional as F
-from torch import optim
 from torch import nn
 
 import timm
 
 import numpy as np
 
-from pytorch_lightning import LightningModule
 
 class TIMMCollection(nn.Module):
     '''
-    Pretrained TIMM Models
+    Pretrained TIMM Model backbone.
 
+    Attributes:
+        model (torch.nn.Module): Pretrained model from TIMM.
     '''
     def __init__(self,
-                 num_classes,
-                 model_id,
-                 is_pretrained
+                 num_classes: int,
+                 model_id: str,
+                 is_pretrained: bool
                  ):
+        '''
+        Initialize the TIMMCollection instance.
+
+        Arguments:
+            num_classes (int): Number of classes.
+            is_pretrained (bool): If True, use pretrained weights.
+            model_id (str): The model to select (check TIMM collection on Huggingface for options)
+
+        '''
         super().__init__()
         self.model = timm.create_model(model_id, pretrained=is_pretrained, num_classes=num_classes)
 
@@ -29,9 +38,9 @@ class TIMMCollection(nn.Module):
 
 class TIMMCollectionCombined(nn.Module):
     '''
-    Pretrained TIMM Models combined
+    A model combining several pretrained TIMM models for different modalities.
 
-    fusion_mode:
+    Supports late fusion with the following modes:
     - concatenate: concatenate the embeddings of all 2 / 3
       models, apply classification layer
     - average: calculate the average of the embeddings of all models, position-wise
@@ -41,6 +50,17 @@ class TIMMCollectionCombined(nn.Module):
     - learned_weighted_average: average with learnable weights
     - attention: one self-attention layer, then average
 
+    Attributes:
+        num_models (int): Number of models / modalities
+        model_id (str): TIMM model ID to use for each modality.
+        is_pretrained (bool): If True, use pretrained weights.
+        num_classes (int): Number of classes.
+        out_features (int): Size of the embedding created by TIMM when stripping classification head.
+        fusion_mode (str): Which fusion mode to select in late fusion.
+        model1 (nn.Module): TODO merge to dict
+        model2 (nn.Module): 
+        model3 (nn.Module): 
+        fusion (nn.Module): Fusion module.
     '''
     def __init__(self,
                  num_classes,
@@ -50,13 +70,24 @@ class TIMMCollectionCombined(nn.Module):
                  out_features,
                  fusion_mode
                  ):
+        '''
+        Initialize TIMMCollectionCombined.
+
+        Arguments:
+            num_models (int): Number of models / modalities
+            model_id (str): TIMM model ID to use for each modality.
+            is_pretrained (bool): If True, use pretrained weights.
+            num_classes (int): Number of classes.
+            out_features (int): Size of the embedding created by TIMM when stripping classification head.
+            fusion_mode (str): Which fusion mode to select in late fusion.
+        '''
         super().__init__()
 
         self.num_models = num_models
         self.out_features = out_features
         self.num_classes = num_classes
         self.fusion_mode = fusion_mode
-        
+
         self.model1 = timm.create_model(model_id, pretrained=is_pretrained, num_classes=0)
 
         if self.num_models >= 2:
@@ -78,7 +109,8 @@ class TIMMCollectionCombined(nn.Module):
                 self.fusion.head = nn.Linear(self.out_features, self.num_classes)
             case 'learned_weighted_average':
                 self.fusion.weights = nn.ParameterList([nn.Parameter(torch.rand(self.num_models))])
-                self.fusion.head = nn.Sequential(nn.LayerNorm(self.out_features), nn.Linear(self.out_features, self.num_classes))
+                self.fusion.head = nn.Sequential(nn.LayerNorm(self.out_features),
+                                                 nn.Linear(self.out_features, self.num_classes))
             case 'attention':
             # TODO https://github.com/facebookresearch/multimodal/blob/main/torchmultimodal/modules/fusions/attention_fusion.py
                 self.fusion.extra_attention = nn.TransformerEncoderLayer(self.out_features, 8, 512, batch_first=True)
@@ -129,7 +161,6 @@ class TIMMCollectionCombined(nn.Module):
                 xcat = self.fusion.extra_attention(xcat)
                 xcat = torch.sum(xcat, axis=1)
                 return self.fusion.head(xcat)
-                
 
 class SimpleConvNet(nn.Module):
     '''
@@ -151,11 +182,11 @@ class SimpleConvNet(nn.Module):
         super().__init__()
 
         # calculate the flattened size
-        S = input_size - kernel_size + 1
-        S = np.ceil((S - 1) / pool_size)
-        S = S - kernel_size + 1
-        S = np.ceil((S - 1) / pool_size)
-        flattened_size = int( S * S * out_channels)
+        mysize = input_size - kernel_size + 1
+        mysize = np.ceil((mysize - 1) / pool_size)
+        mysize = mysize - kernel_size + 1
+        mysize = np.ceil((mysize - 1) / pool_size)
+        flattened_size = int( mysize * mysize * out_channels)
 
         kernel_tuple = (kernel_size, kernel_size)
         pool_tuple = (pool_size, pool_size)
