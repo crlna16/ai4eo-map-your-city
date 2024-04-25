@@ -33,8 +33,8 @@ class MapYourCityDataset(Dataset):
         fake_streetview (PIL.Image): Streetview photo to use in case of missing modality.
     '''
     def __init__(self,
-                 options,
-                 split='train'
+                 options: Dict,
+                 split: str = 'train'
                  ):
         '''
         Initialize the MapYourCityDataset.
@@ -89,9 +89,13 @@ class MapYourCityDataset(Dataset):
 
         # not all folders have a streetview image
         if split == 'test' and self.img_file == 'street.jpg':
-            self.fake_streetview = Image.fromarray(np.zeros([512,1024,3]).astype(np.uint8))
+            x = np.zeros([284,284,3])
+            x[...,0] = 0.4850 * 256
+            x[...,1] = 0.4560 * 256
+            x[...,2] = 0.4060 * 256
+            self.fake_streetview = Image.fromarray(x.astype(np.uint8))
 
-    def loader(self, path):
+    def loader(self, path: str):
         '''
         Open the image file at path.
 
@@ -112,7 +116,7 @@ class MapYourCityDataset(Dataset):
         '''
         return len(self.labels)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int):
         '''
         Retrieve an item from the dataset.
 
@@ -148,8 +152,8 @@ class CombinedDataset(Dataset):
     '''
 
     def __init__(self,
-                 options,
-                 split='train'
+                 options: Dict,
+                 split: str = 'train'
                  ):
         '''
         Create datasets for topview, streetview, and Sentinel-2 data as specified.
@@ -192,7 +196,7 @@ class CombinedDataset(Dataset):
             return len(self.sentinel2_dataset.labels)
         return None
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int):
 
         imgs = []
 
@@ -219,8 +223,8 @@ class PhotoDataset(MapYourCityDataset):
         split - specifies split
     '''
     def __init__(self,
-                 options,
-                 split='train'
+                 options: Dict,
+                 split: str = 'train'
                  ):
         super().__init__(options, split)
 
@@ -254,7 +258,7 @@ class PhotoDataset(MapYourCityDataset):
 
         self.transforms = v2.Compose(trafo0 + trafo1 + trafo2)
 
-    def loader(self, path):
+    def loader(self, path: str):
         if not os.path.exists(path):
             img = self.fake_streetview
             return img.convert("RGB")
@@ -285,10 +289,12 @@ class Sentinel2Dataset(MapYourCityDataset):
 
     '''
     def __init__(self,
-                 options,
-                 split='train'
+                 options: Dict,
+                 split: str = 'train'
                  ):
         super().__init__(options, split)
+
+        self.transform = options['transform']
 
         self.reference_bands = ['B01','B02', 'B03', 'B04','B05','B06',
                                 'B07','B08','B8A','B09','B11','B12']
@@ -301,9 +307,6 @@ class Sentinel2Dataset(MapYourCityDataset):
                 self.use_bands = options['use_bands']
 
                 self.channel_idx = [self.reference_bands.index(b) for b in self.use_bands]
-
-                mean = [0., 0., 0.]
-                std = [1., 1., 1.]
 
                 self.transforms = v2.ToDtype(torch.float32, scale=True)
             case 'patch':
@@ -325,7 +328,7 @@ class Sentinel2Dataset(MapYourCityDataset):
 
                 self.transforms = v2.Compose(trafo0 + trafo1 + trafo2)
 
-    def loader(self, path):
+    def loader(self, path: str):
         '''
         Open the image file at path.
 
@@ -340,7 +343,7 @@ class Sentinel2Dataset(MapYourCityDataset):
             Image.
         '''
 
-        match options['transform']:
+        match self.transform:
             case 'default':
                 return self._sentinel2_loader(path)
             case 'patch':
@@ -348,7 +351,7 @@ class Sentinel2Dataset(MapYourCityDataset):
             case _:
                 raise ValueError('Invalid transform option')
 
-    def _sentinel2_patch_loader(self, path):
+    def _sentinel2_patch_loader(self, path: str):
         '''
         Load Sentinel-2 and create patches by stacking the 12 
         channels side by side --> 3 x 128 x 128
@@ -386,7 +389,7 @@ class Sentinel2Dataset(MapYourCityDataset):
         return patch
 
 
-    def _sentinel2_loader(self, path):
+    def _sentinel2_loader(self, path: str):
         '''
         Load Sentinel-2 and extract the requested channels
         
@@ -432,10 +435,10 @@ class MapYourCityDataModule(L.LightningDataModule):
 
     '''
     def __init__(self,
-                 batch_size,
-                 num_workers,
-                 pin_memory,
-                 dataset_options
+                 batch_size: int,
+                 num_workers: int,
+                 pin_memory: bool,
+                 dataset_options: Dict
                  ):
         super().__init__()
 
@@ -470,12 +473,15 @@ class MapYourCityDataModule(L.LightningDataModule):
         pass
 
     def train_dataloader(self):
+        '''Returns: DataLoader'''
         return DataLoader(dataset=self.train_data, batch_size=self.batch_size, num_workers=self.num_workers, pin_memory=self.pin_memory, shuffle=True)
 
     def valid_dataloader(self):
+        '''Returns: DataLoader'''
         return DataLoader(dataset=self.valid_data, batch_size=self.batch_size, num_workers=self.num_workers, pin_memory=self.pin_memory, shuffle=False)
 
     def test_dataloader(self):
+        '''Returns: DataLoader'''
         return DataLoader(dataset=self.test_data, batch_size=self.batch_size, num_workers=self.num_workers, pin_memory=self.pin_memory, shuffle=False)
 
 class MapYourCityCombinedDataModule(L.LightningDataModule):
@@ -491,10 +497,10 @@ class MapYourCityCombinedDataModule(L.LightningDataModule):
 
     '''
     def __init__(self,
-                 batch_size,
-                 num_workers,
-                 pin_memory,
-                 dataset_options
+                 batch_size: int,
+                 num_workers: int,
+                 pin_memory: bool,
+                 dataset_options: Dict
                  ):
         super().__init__()
 
@@ -509,7 +515,7 @@ class MapYourCityCombinedDataModule(L.LightningDataModule):
 
     def setup(self, stage='fit'):
         '''
-        Train, valid and test data
+        Construct train, valid, and test data
         '''
 
         self.train_data = CombinedDataset(self.dataset_options, split='train')
@@ -520,10 +526,13 @@ class MapYourCityCombinedDataModule(L.LightningDataModule):
         pass
 
     def train_dataloader(self):
+        '''Returns: DataLoader'''
         return DataLoader(dataset=self.train_data, batch_size=self.batch_size, num_workers=self.num_workers, pin_memory=self.pin_memory, shuffle=True)
 
     def valid_dataloader(self):
+        '''Returns: DataLoader'''
         return DataLoader(dataset=self.valid_data, batch_size=self.batch_size, num_workers=self.num_workers, pin_memory=self.pin_memory, shuffle=False)
 
     def test_dataloader(self):
+        '''Returns: DataLoader'''
         return DataLoader(dataset=self.test_data, batch_size=self.batch_size, num_workers=self.num_workers, pin_memory=self.pin_memory, shuffle=False)
