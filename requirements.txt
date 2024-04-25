@@ -1,6 +1,5 @@
 absl-py==2.1.0
 affine==2.4.0
--e git+ssh://git@github.com/crlna16/ai4eo-map-your-city.git@602dc32154943484ad37f041bcf65a3736df6cdb#egg=ai4eo_mapyourcity
 aiohttp==3.9.3
 aiohttp-retry==2.8.3
 aiosignal==1.3.1
