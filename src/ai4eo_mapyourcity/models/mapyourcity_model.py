@@ -1,40 +1,52 @@
-from typing import Any, List
+'''Model for MapYourCity challenge'''
+from typing import Dict
 
 import torch
 from torch.nn import functional as F
 from torch import optim
-from torch.nn import Linear
 
-import timm
 import torchmetrics
 
 from pytorch_lightning import LightningModule
 
 class MapYourCityModel(LightningModule):
     '''
-    Wrapper for the MapYourCity models
-    Architectures from TIMM
-    https://huggingface.co/timm/swin_tiny_patch4_window7_224.ms_in1k
+    Wrapper LightningModule for the backbones.
 
-    Args:
-      model (str)       : specifies which model to use
-      pretrained (bool) : if True, use pretrained model weights
-      num_classes (int) : number of output classes
-      learning_rate (float) : optimizer learning rate
-      weight_decay (float) : optimizer weight decay
-      weighted_loss (bool) : if True, apply class_weights in CE loss
-      class_weights (dict) : class weights for CE loss
-
+    Attributes:
+        backbone (torch.nn.Module): Model, defines architecture and forward step.
+        validation_metric (str): Choice of validation metric.
+        weighted_loss (bool): If True, use the class weights in the loss function.
+        class_weights (Dict): The class weights.
+        learning_rate (float): Optimizer learning rate.
+        weight_decay (float): Optimizer weight decay.
     '''
 
     def __init__(self,
-                 backbone,
-                 num_classes,
-                 learning_rate,
-                 weight_decay,
-                 weighted_loss,
-                 class_weights,
-                 validation_metric):
+                 backbone: torch.nn.Module,
+                 num_classes: int,
+                 learning_rate: float,
+                 weight_decay: float,
+                 weighted_loss: bool,
+                 class_weights: Dict,
+                 validation_metric: str
+                 ):
+        '''
+        Initialize MapYourCityModel.
+
+        Arguments:
+            backbone (torch.nn.Module): Model, defines architecture and forward step.
+            validation_metric (str): Choice of validation metric.
+            weighted_loss (bool): If True, use the class weights in the loss function.
+            class_weights (Dict): The class weights.
+            learning_rate (float): Optimizer learning rate.
+            weight_decay (float): Optimizer weight decay.
+            num_classes (int): Number of classes.
+
+        Raises:
+            ValueError if validation_metric not in ['accuracy', 'confusion_matrix']
+
+        '''
 
         super().__init__()
         # this line allows to access init params with 'self.hparams' attribute
@@ -46,16 +58,14 @@ class MapYourCityModel(LightningModule):
         # metrics
         self.validation_metric = validation_metric
 
-        match validation_metric: 
+        match validation_metric:
             case 'accuracy':
                 self.acc = torchmetrics.Accuracy('multiclass', num_classes=num_classes)
             case 'confusion_matrix':
-                self.confmat = torchmetrics.ConfusionMatrix(task='multiclass', threshold=None, num_classes=num_classes, normalize='true')
-            case 'mean_average_precision':
-                self.maprec = torchmetrics.AveragePrecision(task='multiclass',
+                self.confmat = torchmetrics.ConfusionMatrix(task='multiclass',
+                                                            threshold=None,
                                                             num_classes=num_classes,
-                                                            average='macro',
-                                                            thresholds=None)
+                                                            normalize='true')
             case _:
                 raise ValueError('Validation metric not implemented:', validation_metric)
 
@@ -70,7 +80,6 @@ class MapYourCityModel(LightningModule):
         # store predictions
         self.valid_predictions = {'pid': [], 'predicted_label': []}
         self.test_predictions = {'pid': [], 'predicted_label': []}
-
 
     def forward(self, x):
         return self.backbone(x)
@@ -93,8 +102,6 @@ class MapYourCityModel(LightningModule):
             metric = self.acc(y_hat, y)
         elif self.validation_metric == 'confusion_matrix':
             metric = self.confmat(y_hat, y).diag().mean()
-        elif self.validation_metric == 'mean_average_precision':
-            metric = self.maprec(prediction, y)
 
         return loss, metric, y_hat, y, pid
 
@@ -113,13 +120,13 @@ class MapYourCityModel(LightningModule):
         self.log('valid_metric', metric, on_epoch=True, on_step=False, sync_dist=True)
 
     def predict_step(self, batch, batch_idx):
-        loss, metric, y_hat, y, pid = self.step(batch)
+        _, _, y_hat, _, pid = self.step(batch)
 
         self.valid_predictions['pid'].extend(list(pid))
         self.valid_predictions['predicted_label'].extend(list(y_hat.squeeze().cpu().numpy()))
 
     def test_step(self, batch, batch_idx):
-        loss, metric, y_hat, y, pid = self.step(batch)
+        loss, metric, y_hat, _, pid = self.step(batch)
 
         self.test_predictions['pid'].extend(list(pid))
         self.test_predictions['predicted_label'].extend(list(y_hat.squeeze().cpu().numpy()))
@@ -128,6 +135,6 @@ class MapYourCityModel(LightningModule):
         self.log('test_metric', metric, on_epoch=True, on_step=False, sync_dist=True)
 
     def configure_optimizers(self):
+        '''Configure the optimizer to train all model parameters'''
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
         return optimizer
-
