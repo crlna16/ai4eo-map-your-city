@@ -164,8 +164,10 @@ class TIMMCollectionCombined(nn.Module):
 
 class SimpleConvNet(nn.Module):
     '''
-    A simple ConvNet for the Sentinel-2 data
+    A convolutional neural network architecture.
 
+    Attributes:
+        backbone (nn.Sequential): Model.
     '''
 
     def __init__(self, 
@@ -179,6 +181,20 @@ class SimpleConvNet(nn.Module):
                  dropout,
                  model_id
                  ):
+        '''
+        Initialize SimpleConvNet.
+
+        Arguments:
+            input_size (int): Image input size (assumes quadratic shape)
+            num_classes (int): Number of classes
+            in_channels (int): Number of input channels
+            out_channels (int): Number of output channels (of convolutional block)
+            kernel_size (int): Convolutional kernel size.
+            pool_size (int): MaxPool size.
+            mid_units (int): Number of neurons after flattening.
+            dropout (float): Dropout percentage.
+            model_id (str): Argument only listed for consistency with other backbones.
+        '''
         super().__init__()
 
         # calculate the flattened size
