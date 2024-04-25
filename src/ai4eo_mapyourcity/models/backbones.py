@@ -1,5 +1,6 @@
 '''Backbones for MapYourCity challenge'''
 
+from typing import Dict
 
 import torch
 from torch import nn
@@ -88,13 +89,11 @@ class TIMMCollectionCombined(nn.Module):
         self.num_classes = num_classes
         self.fusion_mode = fusion_mode
 
-        self.model1 = timm.create_model(model_id, pretrained=is_pretrained, num_classes=0)
-
-        if self.num_models >= 2:
-            self.model2 = timm.create_model(model_id, pretrained=is_pretrained, num_classes=0)
-
-        if self.num_models >= 3:
-            self.model3 = timm.create_model(model_id, pretrained=is_pretrained, num_classes=0)
+        self.models = nn.ModuleDict({
+                        'topview': timm.create_model(model_id, pretrained=is_pretrained, num_classes=0),
+                        'sentinel2': timm.create_model(model_id, pretrained=is_pretrained, num_classes=0),
+                        'streetview': timm.create_model(model_id, pretrained=is_pretrained, num_classes=0),
+        })
 
         self.fusion = nn.Module()
 
@@ -121,43 +120,42 @@ class TIMMCollectionCombined(nn.Module):
         self.add_module('fusion', self.fusion)
 
 
-    def forward(self, x):
+    def forward(self, x: Dict[str, torch.Tensor]) -> torch.Tensor:
         '''
         Combine models before the original classification head stage
+
+        Arguments:
+            x (Dict[str, torch.Tensor]): Images as key-value pairs. Matches with ModuleDict.
         '''
 
-        if self.num_models >= 2:
-            embeddings1 = self.model1(x[0])
-            embeddings2 = self.model2(x[1])
-            xcat = torch.cat([embeddings1, embeddings2], axis=-1)
+        embeddings = {}
+        for key, encoder in self.models.items():
+            if not key in x: # missing in input
+                print(f'{key} is missing in input dict')
+                continue
+            embeddings[key] = encoder(x[key]).unsqueeze(1)
 
-        if self.num_models == 3:
-            embeddings3 = self.model3(x[2])
-            xcat = torch.cat([xcat, embeddings3], axis=-1)
+        xcat = torch.cat(list(embeddings.values()), axis=1)
 
         match self.fusion_mode:
             case 'concatenate':
                 # common classification head
+                xcat = xcat.flatten()
                 return self.fusion.head(xcat)
             case 'average':
-                xcat = xcat.reshape(-1, self.num_models, self.out_features)
                 xcat = torch.mean(xcat, axis=1)
                 return self.fusion.head(xcat)
             case 'sum':
-                xcat = xcat.reshape(-1, self.num_models, self.out_features)
                 xcat = torch.sum(xcat, axis=1)
                 return self.fusion.head(xcat)
             case 'max':
-                xcat = xcat.reshape(-1, self.num_models, self.out_features)
                 xcat = torch.max(xcat, axis=1).values
                 return self.fusion.head(xcat)
             case 'learned_weighted_average':
-                xcat = xcat.reshape(-1, self.num_models, self.out_features)
                 xcat = torch.einsum('bij,i -> bij', xcat, self.fusion.weights[0])
                 xcat = torch.mean(xcat, axis=1)
                 return self.fusion.head(xcat)
             case 'attention':
-                xcat = xcat.reshape(-1, self.num_models, self.out_features)
                 xcat = self.fusion.extra_attention(xcat)
                 xcat = torch.sum(xcat, axis=1)
                 return self.fusion.head(xcat)

@@ -129,7 +129,10 @@ class MapYourCityModel(LightningModule):
         loss, metric, y_hat, _, pid = self.step(batch)
 
         self.test_predictions['pid'].extend(list(pid))
-        self.test_predictions['predicted_label'].extend(list(y_hat.squeeze().cpu().numpy()))
+        if len(y_hat.shape) == 1:
+            self.test_predictions['predicted_label'].extend(list(y_hat.cpu().numpy()))
+        else:
+            self.test_predictions['predicted_label'].extend(list(y_hat.squeeze().cpu().numpy()))
 
         self.log('test_loss', loss, on_epoch=True, on_step=False, sync_dist=True)
         self.log('test_metric', metric, on_epoch=True, on_step=False, sync_dist=True)

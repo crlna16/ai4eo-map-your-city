@@ -30,7 +30,6 @@ class MapYourCityDataset(Dataset):
         labels (List): List of all labels.
         image_paths (List): List of all image paths.
         image_roots (List): List of all image root folders.
-        fake_streetview (PIL.Image): Streetview photo to use in case of missing modality.
     '''
     def __init__(self,
                  options: Dict,
@@ -86,14 +85,6 @@ class MapYourCityDataset(Dataset):
 
         self.image_paths = [os.path.join(data_path, pid, self.img_file) for pid in self.pids]
         self.image_roots = [os.path.join(data_path, pid) for pid in self.pids]
-
-        # not all folders have a streetview image
-        if split == 'test' and self.img_file == 'street.jpg':
-            x = np.zeros([284,284,3])
-            x[...,0] = 0.4850 * 256
-            x[...,1] = 0.4560 * 256
-            x[...,2] = 0.4060 * 256
-            self.fake_streetview = Image.fromarray(x.astype(np.uint8))
 
     def loader(self, path: str):
         '''
@@ -197,20 +188,27 @@ class CombinedDataset(Dataset):
         return None
 
     def __getitem__(self, idx: int):
+        '''
+        Returns:
+            Dict [str, torch.Tensor]: Dictionary of transformed images.
+            label: Image label.
+            pid: Image PID.
+        '''
 
-        imgs = []
+        imgs = {}
 
         if self.use_topview:
             img, label, pid = self.topview_dataset.__getitem__(idx)
-            imgs.append(img)
+            imgs['topview'] = img
         if self.use_streetview:
             img, label, pid = self.streetview_dataset.__getitem__(idx)
-            imgs.append(img)
+            if img is not None: # account for missing modality
+                imgs['streetview'] = img
         if self.use_sentinel2:
             img, label, pid = self.sentinel2_dataset.__getitem__(idx)
-            imgs.append(img)
+            imgs['sentinel2'] = img
 
-        return tuple(imgs), label, pid
+        return imgs, label, pid
 
 class PhotoDataset(MapYourCityDataset):
     '''
@@ -260,8 +258,7 @@ class PhotoDataset(MapYourCityDataset):
 
     def loader(self, path: str):
         if not os.path.exists(path):
-            img = self.fake_streetview
-            return img.convert("RGB")
+            return None
 
         with open(path, "rb") as f:
             img = Image.open(f)
@@ -549,4 +546,4 @@ class MapYourCityCombinedDataModule(L.LightningDataModule):
 
     def test_dataloader(self):
         '''Returns: DataLoader'''
-        return DataLoader(dataset=self.test_data, batch_size=self.batch_size, num_workers=self.num_workers, pin_memory=self.pin_memory, shuffle=False)
+        return DataLoader(dataset=self.test_data, batch_size=1, num_workers=self.num_workers, pin_memory=self.pin_memory, shuffle=False)
