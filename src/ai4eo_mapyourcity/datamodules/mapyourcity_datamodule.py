@@ -273,9 +273,13 @@ class Sentinel2Dataset(MapYourCityDataset):
     '''
     Dataset for MapYourCity data
     
-    Sentinel-2 only
-
-    TODO
+    Sentinel-2 only. Can process satellite data in two ways:
+    - Default: [C, H, W] with up to 15 channels including NDVI, NDWI, NDBI
+    - Patch: [C, 2*H, 2*W] with 3 channels, image is created as a patch of 
+        -- [NDVI, NDWI, NDBI] top left
+        -- [...] top right
+        -- [...] bottom left
+        -- [...] bottom right
 
     Arguments:
       data_path (str) : data root path
@@ -296,22 +300,15 @@ class Sentinel2Dataset(MapYourCityDataset):
 
         self.transform = options['transform']
 
-        self.reference_bands = ['B01','B02', 'B03', 'B04','B05','B06',
-                                'B07','B08','B8A','B09','B11','B12']
-
         match options['transform']:
             case 'default':
                 self.use_ndvi = options['use_ndvi']
                 self.use_ndwi = options['use_ndwi']
                 self.use_ndbi = options['use_ndbi']
-                self.use_bands = options['use_bands']
-
-                self.channel_idx = [self.reference_bands.index(b) for b in self.use_bands]
 
                 self.transforms = v2.ToDtype(torch.float32, scale=True)
             case 'patch':
                 # Create a 3 x 128 x 128 patch
-                self.loader = self._sentinel2_patch_loader
                 if split == 'train':
                     trafo1 = [ v2.Resize(size=(self.input_size, self.input_size),
                                          interpolation=3),
@@ -368,25 +365,7 @@ class Sentinel2Dataset(MapYourCityDataset):
             # Need to calculate indices before selecting channels
             s2 = f.read() * 3e-4
 
-        # NIR - RED
-        ndvi = (s2[7] - s2[3]) / (s2[7] + s2[3])
-        #ndvi = ndvi[np.newaxis, ...]
-        # SWIR - NIR
-        ndbi = (s2[10] - s2[7]) / (s2[10] + s2[7])
-        #ndbi = ndbi[np.newaxis, ...]
-        # NIR - RGB
-        ndwi = (s2[2] - s2[7]) / (s2[2] + s2[7])
-        #ndwi = ndwi[np.newaxis, ...]
-
-        p_tl = np.stack([ndvi, ndwi, ndbi])
-        p_tr = s2[[3,2,1]] # top right - RGB
-        p_bl = s2[[4,5,6]] # bottom left - Vegetation red edge
-        p_br = s2[[8, 10, 11]] # bottom right - NIR/SWIR
-
-        patch = np.dstack([np.hstack([p_tl, p_tr]), np.hstack([p_bl, p_br])])
-        patch = np.nan_to_num(patch).transpose(2,1,0)
-
-        return patch
+        return self.raster_to_patch(s2)
 
 
     def _sentinel2_loader(self, path: str):
@@ -411,7 +390,7 @@ class Sentinel2Dataset(MapYourCityDataset):
             ndwi = (s2[2] - s2[7]) / (s2[2] + s2[7])
             ndwi = ndwi[np.newaxis, ...]
 
-            stacked = s2[self.channel_idx]
+            stacked = s2
             if self.use_ndvi:
                 stacked = np.vstack([stacked, ndvi])
             if self.use_ndwi:
@@ -422,6 +401,41 @@ class Sentinel2Dataset(MapYourCityDataset):
             stacked = np.nan_to_num(stacked)
 
             return stacked.astype(np.float32)
+
+    @staticmethod
+    def raster_to_patch(rasterimg):
+        '''
+        Construct a patch from Sentinel-2 data.
+
+        The 12 channels + NDVI, NDWI, NDBI are rearranged in 4 quadrants.
+        To accomodate the N-Indices, 3 channels are dropped:
+        - B01, B09 (60 m resolution)
+        - B08 (contained in N-Indices)
+
+        Top left: [NDVI, NDWI, NDBI]
+        Top right: [B04, B03, B02]
+        Bottom left: [B05, B06, B07]
+        Bottom right: [B8A, B11, B12]
+
+        Returns:
+            Image. Patch of [C = 3, 4*H, 4*W] for compatibility with PhotoDataset samples.
+        '''
+        # NIR - RED
+        ndvi = (rasterimg[7] - rasterimg[3]) / (rasterimg[7] + rasterimg[3])
+        # SWIR - NIR
+        ndbi = (rasterimg[10] - rasterimg[7]) / (rasterimg[10] + rasterimg[7])
+        # NIR - RGB
+        ndwi = (rasterimg[2] - rasterimg[7]) / (rasterimg[2] + rasterimg[7])
+
+        p_tl = np.stack([ndvi, ndwi, ndbi])
+        p_tr = rasterimg[[3,2,1]] # top right - RGB
+        p_bl = rasterimg[[4,5,6]] # bottom left - Vegetation red edge
+        p_br = rasterimg[[8, 10, 11]] # bottom right - NIR/SWIR
+
+        patch = np.dstack([np.hstack([p_tl, p_tr]), np.hstack([p_bl, p_br])])
+        patch = 256 * np.nan_to_num(patch).transpose(2,1,0)
+
+        return patch
 
 class MapYourCityDataModule(L.LightningDataModule):
     '''
