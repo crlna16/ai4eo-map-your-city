@@ -158,8 +158,10 @@ class CombinedDataset(Dataset):
         '''
         super().__init__()
 
-        self.use_datasets = list(options['model_id'].keys())
-
+        self.use_datasets = []
+        for key, value in options['model_id'].items():
+            if value is not None:
+                self.use_datasets.append(key)
 
         self.topview_options = options['dataset_options_topview']
         self.streetview_options = options['dataset_options_streetview']

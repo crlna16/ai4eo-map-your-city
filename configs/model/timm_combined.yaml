@@ -4,9 +4,9 @@ defaults:
 backbone:
   _target_: ai4eo_mapyourcity.models.backbones.TIMMCollectionCombined
   model_id: 
-    topview: swinv2_tiny_window16_256.ms_in1k
-    streetview: swinv2_tiny_window16_256.ms_in1k
-    sentinel2: swinv2_tiny_window16_256.ms_in1k
+    topview: null 
+    streetview: null
+    sentinel2: null
   is_pretrained: True
   num_classes: ${model.num_classes}
   out_features:

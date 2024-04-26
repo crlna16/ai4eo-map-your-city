@@ -90,8 +90,11 @@ class TIMMCollectionCombined(nn.Module):
 
         model_dict = {}
         for key, value in model_id.items():
-            log.info(f'Creating TIMM model {model_id[key]} for modality {key}')
-            model_dict[key] = timm.create_model(model_id[key], pretrained=is_pretrained, num_classes=0)
+            if value is None:
+                log.info(f'Skipping modality {key}')
+            else:
+                log.info(f'Creating TIMM model {model_id[key]} for modality {key}')
+                model_dict[key] = timm.create_model(model_id[key], pretrained=is_pretrained, num_classes=0)
 
         self.models = nn.ModuleDict(model_dict)
 
