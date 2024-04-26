@@ -3,11 +3,11 @@ _target_: ai4eo_mapyourcity.datamodules.mapyourcity_datamodule.MapYourCityCombin
 defaults:
   - mapyourcity.yaml
 
+batch_size: 32
+
 dataset_options:
   transform: default
-  use_topview: True
-  use_streetview: True
-  use_sentinel2: True
+  model_id: ${model.backbone.model_id}
   dataset_options_topview:
     transform: default
     img_file: orthophoto.tif

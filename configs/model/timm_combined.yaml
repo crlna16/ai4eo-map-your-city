@@ -3,9 +3,14 @@ defaults:
 
 backbone:
   _target_: ai4eo_mapyourcity.models.backbones.TIMMCollectionCombined
-  model_id: swinv2_tiny_window16_256.ms_in1k
+  model_id: 
+    topview: swinv2_tiny_window16_256.ms_in1k
+    streetview: swinv2_tiny_window16_256.ms_in1k
+    sentinel2: swinv2_tiny_window16_256.ms_in1k
   is_pretrained: True
   num_classes: ${model.num_classes}
-  num_models: 3 # How many models to combine
-  out_features: 768 # from pretrained model
-  fusion_mode: concatenate
+  out_features:
+    topview: 768
+    streetview: 768
+    sentinel2: 768
+  fusion_mode: max

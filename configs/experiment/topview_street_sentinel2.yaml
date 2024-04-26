@@ -19,15 +19,14 @@ seed: 404
 model:
   weighted_loss: True
   backbone:
-    model_id: swinv2_tiny_window16_256.ms_in1k
-    num_models: 3
+    model_id: 
+      topview: swinv2_tiny_window16_256.ms_in1k
+      streetview: swinv2_tiny_window16_256.ms_in1k
+      sentinel2: swinv2_tiny_window16_256.ms_in1k
 
 datamodule:
   batch_size: 32
   dataset_options:
-    use_topview: True
-    use_streetview: True
-    use_sentinel2: True
     dataset_options_topview:
       transform: default
     dataset_options_streetview:

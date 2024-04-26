@@ -9,6 +9,8 @@ import timm
 
 import numpy as np
 
+from ai4eo_mapyourcity import utils
+log = utils.get_logger(__name__)
 
 class TIMMCollection(nn.Module):
     '''
@@ -53,10 +55,10 @@ class TIMMCollectionCombined(nn.Module):
 
     Attributes:
         num_models (int): Number of models / modalities
-        model_id (str): TIMM model ID to use for each modality.
+        model_id (Dict): TIMM model ID to use for each modality.
         is_pretrained (bool): If True, use pretrained weights.
         num_classes (int): Number of classes.
-        out_features (int): Size of the embedding created by TIMM when stripping classification head.
+        out_features (Dict): Size of the embedding created by TIMM when stripping classification head.
         fusion_mode (str): Which fusion mode to select in late fusion.
         model1 (nn.Module): TODO merge to dict
         model2 (nn.Module): 
@@ -65,17 +67,15 @@ class TIMMCollectionCombined(nn.Module):
     '''
     def __init__(self,
                  num_classes,
-                 model_id,
+                 model_id: Dict[str, str],
                  is_pretrained,
-                 num_models,
-                 out_features,
+                 out_features: Dict[str, int],
                  fusion_mode
                  ):
         '''
         Initialize TIMMCollectionCombined.
 
         Arguments:
-            num_models (int): Number of models / modalities
             model_id (str): TIMM model ID to use for each modality.
             is_pretrained (bool): If True, use pretrained weights.
             num_classes (int): Number of classes.
@@ -84,16 +84,18 @@ class TIMMCollectionCombined(nn.Module):
         '''
         super().__init__()
 
-        self.num_models = num_models
-        self.out_features = out_features
+        self.out_features = max(out_features.values())
         self.num_classes = num_classes
         self.fusion_mode = fusion_mode
 
-        self.models = nn.ModuleDict({
-                        'topview': timm.create_model(model_id, pretrained=is_pretrained, num_classes=0),
-                        'sentinel2': timm.create_model(model_id, pretrained=is_pretrained, num_classes=0),
-                        'streetview': timm.create_model(model_id, pretrained=is_pretrained, num_classes=0),
-        })
+        model_dict = {}
+        for key, value in model_id.items():
+            log.info(f'Creating TIMM model {model_id[key]} for modality {key}')
+            model_dict[key] = timm.create_model(model_id[key], pretrained=is_pretrained, num_classes=0)
+
+        self.models = nn.ModuleDict(model_dict)
+
+        self.num_models = len(self.models.keys())
 
         self.fusion = nn.Module()
 

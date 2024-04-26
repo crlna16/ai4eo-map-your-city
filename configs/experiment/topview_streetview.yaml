@@ -12,7 +12,7 @@ defaults:
 # this allows you to overwrite only specified parameters
 
 # name of the run determines folder name in logs
-name: "topview_sentinel"
+name: "topview_streetview"
 
 seed: 404
 
@@ -21,8 +21,7 @@ model:
   backbone:
     model_id: 
       topview: swinv2_tiny_window16_256.ms_in1k
-      sentinel2: swinv2_tiny_window16_256.ms_in1k
-    fusion_mode: average
+      streetview: swinv2_tiny_window16_256.ms_in1k
 
 datamodule:
   batch_size: 32
@@ -31,5 +30,3 @@ datamodule:
       transform: default
     dataset_options_streetview:
       transform: default
-    dataset_options_sentinel2:
-      transform: patch

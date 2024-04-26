@@ -17,6 +17,9 @@ from PIL import Image
 import rasterio
 import timm
 
+from ai4eo_mapyourcity import utils
+log = utils.get_logger(__name__)
+
 class MapYourCityDataset(Dataset):
     '''
     Base class for MapYourCity challenge data.
@@ -155,37 +158,34 @@ class CombinedDataset(Dataset):
         '''
         super().__init__()
 
-        self.use_topview = options['use_topview']
+        self.use_datasets = list(options['model_id'].keys())
+
+
         self.topview_options = options['dataset_options_topview']
-        self.use_streetview = options['use_streetview']
         self.streetview_options = options['dataset_options_streetview']
-        self.use_sentinel2 = options['use_sentinel2']
         self.sentinel2_options = options['dataset_options_sentinel2']
 
-        if self.use_topview:
-            self.topview_dataset = PhotoDataset({**options, **options['dataset_options_topview']},
-                                                split)
-        if self.use_streetview:
-            self.streetview_dataset = PhotoDataset({**options, **options['dataset_options_streetview']},
-                                                   split)
-        if self.use_sentinel2:
-            self.sentinel2_dataset = Sentinel2Dataset({**options, **options['dataset_options_sentinel2']},
-                                                      split)
+        self.datasets = {}
 
-        self.sources = int(self.use_topview) + int(self.use_streetview) + int(self.use_sentinel2)
+        if 'topview' in self.use_datasets:
+            log.info('Setting up topview dataset')
+            self.datasets['topview'] = PhotoDataset({**options, **options['dataset_options_topview']},
+                                                split)
+        if 'streetview' in self.use_datasets:
+            log.info('Setting up streetview dataset')
+            self.datasets['streetview'] = PhotoDataset({**options, **options['dataset_options_streetview']},
+                                                   split)
+        if 'sentinel2' in self.use_datasets:
+            log.info('Setting up sentinel2 dataset')
+            self.datasets['sentinel2'] = Sentinel2Dataset({**options, **options['dataset_options_sentinel2']},
+                                                      split)
 
     def __len__(self):
         '''
         Returns:
             int: Length of the dataset.
         '''
-        if self.use_topview:
-            return len(self.topview_dataset.labels)
-        if self.use_streetview:
-            return len(self.streetview_dataset.labels)
-        if self.use_sentinel2:
-            return len(self.sentinel2_dataset.labels)
-        return None
+        return len(list(self.datasets.values())[0].labels)
 
     def __getitem__(self, idx: int):
         '''
@@ -197,16 +197,10 @@ class CombinedDataset(Dataset):
 
         imgs = {}
 
-        if self.use_topview:
-            img, label, pid = self.topview_dataset.__getitem__(idx)
-            imgs['topview'] = img
-        if self.use_streetview:
-            img, label, pid = self.streetview_dataset.__getitem__(idx)
+        for key, dataset in self.datasets.items():
+            img, label, pid = dataset.__getitem__(idx)
             if img is not None: # account for missing modality
-                imgs['streetview'] = img
-        if self.use_sentinel2:
-            img, label, pid = self.sentinel2_dataset.__getitem__(idx)
-            imgs['sentinel2'] = img
+                imgs[key] = img
 
         return imgs, label, pid
 
@@ -529,6 +523,7 @@ class MapYourCityCombinedDataModule(L.LightningDataModule):
         Construct train, valid, and test data
         '''
 
+        log.info(f'--- Split: {stage} ---')
         self.train_data = CombinedDataset(self.dataset_options, split='train')
         self.valid_data = CombinedDataset(self.dataset_options, split='valid')
         self.test_data = CombinedDataset(self.dataset_options, split='test')
