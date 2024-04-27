@@ -122,7 +122,9 @@ class MapYourCityDataset(Dataset):
             int: Class label.
             str: Sample PID.
         '''
-        img = self.transforms( self.loader( self.image_paths[idx] ) )
+        img = self.loader(self.image_paths[idx])
+        if img is not None:
+            img = self.transforms(img)
         label = self.labels[idx]
         pid = self.pids[idx]
 
@@ -254,6 +256,7 @@ class PhotoDataset(MapYourCityDataset):
 
     def loader(self, path: str):
         if not os.path.exists(path):
+            log.info(f'Does not exist: {path}')
             return None
 
         with open(path, "rb") as f:

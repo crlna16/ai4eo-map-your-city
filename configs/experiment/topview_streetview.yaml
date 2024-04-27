@@ -30,3 +30,4 @@ datamodule:
       transform: default
     dataset_options_streetview:
       transform: default
+      img_file: street_segm0.jpg
