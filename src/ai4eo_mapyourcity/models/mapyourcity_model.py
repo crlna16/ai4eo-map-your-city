@@ -2,7 +2,8 @@
 from typing import Dict
 
 import torch
-from torch.nn import functional as F
+from torch import nn
+import torch.nn.functional as F
 from torch import optim
 
 import torchmetrics
@@ -29,6 +30,7 @@ class MapYourCityModel(LightningModule):
                  weight_decay: float,
                  weighted_loss: bool,
                  class_weights: Dict,
+                 loss_id: str,
                  validation_metric: str
                  ):
         '''
@@ -41,6 +43,7 @@ class MapYourCityModel(LightningModule):
             class_weights (Dict): The class weights.
             learning_rate (float): Optimizer learning rate.
             weight_decay (float): Optimizer weight decay.
+            loss_id (str): Choice of loss function.
             num_classes (int): Number of classes.
 
         Raises:
@@ -73,6 +76,20 @@ class MapYourCityModel(LightningModule):
         self.weighted_loss = weighted_loss
         self.class_weights = torch.Tensor(list(class_weights.values())).to('cuda')
 
+        match loss_id:
+            case 'cross_entropy':
+                if self.weighted_loss:
+                    self.criterion = nn.CrossEntropyLoss(weight=self.class_weights)
+                else:
+                    self.criterion = nn.CrossEntropyLoss()
+            case 'ordinal_cross_entropy':
+                if self.weighted_loss:
+                    self.criterion = OrdinalCrossEntropyLoss(num_classes, weight=self.class_weights)
+                else:
+                    self.criterion = OrdinalCrossEntropyLoss(num_classes)
+            case _:
+                raise ValueError('Loss ID not implemented:', loss_id)
+
         # optimizer
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
@@ -93,10 +110,7 @@ class MapYourCityModel(LightningModule):
         prediction = self.backbone(x)
         y_hat = torch.argmax(prediction, dim=-1)
 
-        if self.weighted_loss:
-            loss = F.cross_entropy(prediction, y, weight=self.class_weights)
-        else:
-            loss = F.cross_entropy(prediction, y)
+        loss = self.criterion(prediction, y)
 
         if self.validation_metric == 'accuracy':
             metric = self.acc(y_hat, y)
@@ -141,3 +155,45 @@ class MapYourCityModel(LightningModule):
         '''Configure the optimizer to train all model parameters'''
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
         return optimizer
+
+class OrdinalCrossEntropyLoss(nn.Module):
+    '''
+    Ordinal Cross-Entropy Loss function.
+
+    Respects the natural order of classes.
+    '''
+    def __init__(self, num_classes, weight=None):
+        '''
+        Initialize OrdinalCrossEntropyLoss.
+
+        Arguments:
+            num_classes (int): Number of classes.
+            weight (torch.Tensor): Class weights.
+        '''
+        super().__init__()
+
+        self.num_classes = num_classes
+        self.weight = weight
+
+    def forward(self, logits, targets):
+        '''
+        Calculate the loss.
+
+        Arguments:
+            logits (torch.Tensor): Prediction logits
+            targets (torch.Tensor): Targets.
+
+        Returns:
+            Loss.
+        '''
+
+        batch_size = targets.size(0)
+        binary_targets = torch.zeros_like(logits)
+        for i in range(batch_size):
+            k = targets[i]
+            if k < self.num_classes:
+                binary_targets[i, k:] = 1
+
+        loss = F.binary_cross_entropy_with_logits(logits, binary_targets, weight=self.weight, reduction='mean')
+
+        return loss

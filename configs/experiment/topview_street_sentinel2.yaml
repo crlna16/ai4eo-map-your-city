@@ -19,6 +19,7 @@ seed: 404
 model:
   weighted_loss: True
   backbone:
+    fusion_mode: attention
     model_id: 
       topview: swinv2_tiny_window16_256.ms_in1k
       streetview: swinv2_tiny_window16_256.ms_in1k

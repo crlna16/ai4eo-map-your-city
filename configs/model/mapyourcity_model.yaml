@@ -12,4 +12,5 @@ class_weights:
   '5' : 0.143
   '6' : 0.219
 validation_metric: confusion_matrix
+loss_id: cross_entropy
 backbone: null
