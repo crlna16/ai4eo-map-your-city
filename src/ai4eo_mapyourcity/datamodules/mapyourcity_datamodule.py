@@ -230,12 +230,7 @@ class PhotoDataset(MapYourCityDataset):
                     trafo1 = [ v2.RandomResizedCrop(size=(self.input_size, self.input_size),
                                                     scale=(0.08, 1.0),
                                                     ratio=(0.75, 1.3333),
-                                                    interpolation=3),
-                               v2.RandomHorizontalFlip(p=0.5),
-                               v2.ColorJitter(brightness=(0.6, 1.4),
-                                              contrast=(0.6, 1.4),
-                                              saturation=(0.6, 1.4),
-                                              hue=None),]
+                                                    interpolation=3),]
                 elif split in ['valid', 'test']:
                     trafo1 = [ v2.Resize(size=(self.input_size, self.input_size), interpolation=3),]
 
@@ -249,10 +244,15 @@ class PhotoDataset(MapYourCityDataset):
                 raise ValueError('Invalid choice:', options['transform'])
 
         trafo0 = [v2.ToImage()]
+        trafoA = [v2.RandomHorizontalFlip(p=0.5),
+                  v2.ColorJitter(brightness=(0.6, 1.4),
+                                 contrast=(0.6, 1.4),
+                                 saturation=(0.6, 1.4),
+                                 hue=None),]
         trafo2 = [v2.ToDtype(torch.float32, scale=True),
                   v2.Normalize(mean=self.config['mean'], std=self.config['std'])]
 
-        self.transforms = v2.Compose(trafo0 + trafo1 + trafo2)
+        self.transforms = v2.Compose(trafo0 + trafo1 + trafoA + trafo2)
 
     def loader(self, path: str):
         if not os.path.exists(path):
