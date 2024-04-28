@@ -4,6 +4,7 @@ from typing import Dict
 
 import torch
 from torch import nn
+import torch.nn.functional as F
 
 import timm
 
@@ -116,8 +117,9 @@ class TIMMCollectionCombined(nn.Module):
                 self.fusion.head = nn.Sequential(nn.LayerNorm(self.out_features),
                                                  nn.Linear(self.out_features, self.num_classes))
             case 'attention':
-            # TODO https://github.com/facebookresearch/multimodal/blob/main/torchmultimodal/modules/fusions/attention_fusion.py
-                self.fusion.extra_attention = nn.TransformerEncoderLayer(self.out_features, 8, 512, batch_first=True)
+                self.fusion.attention = nn.ModuleDict({'topview':nn.Linear(self.out_features, 1),
+                                                       'streetview':nn.Linear(self.out_features, 1),
+                                                       'sentinel2':nn.Linear(self.out_features, 1)})
                 self.fusion.head = nn.Linear(self.out_features, self.num_classes)
             case _:
                 raise ValueError('Invalid fusion mode: ', self.fusion_mode)
@@ -140,29 +142,48 @@ class TIMMCollectionCombined(nn.Module):
                 continue
             embeddings[key] = encoder(x[key]).unsqueeze(1)
 
-        xcat = torch.cat(list(embeddings.values()), axis=1)
 
         match self.fusion_mode:
             case 'concatenate':
                 # common classification head
+                xcat = torch.cat(list(embeddings.values()), axis=1)
                 xcat = xcat.flatten()
                 return self.fusion.head(xcat)
             case 'average':
+                xcat = torch.cat(list(embeddings.values()), axis=1)
                 xcat = torch.mean(xcat, axis=1)
                 return self.fusion.head(xcat)
             case 'sum':
+                xcat = torch.cat(list(embeddings.values()), axis=1)
                 xcat = torch.sum(xcat, axis=1)
                 return self.fusion.head(xcat)
             case 'max':
+                xcat = torch.cat(list(embeddings.values()), axis=1)
                 xcat = torch.max(xcat, axis=1).values
                 return self.fusion.head(xcat)
             case 'learned_weighted_average':
+                xcat = torch.cat(list(embeddings.values()), axis=1)
                 xcat = torch.einsum('bij,i -> bij', xcat, self.fusion.weights[0])
                 xcat = torch.mean(xcat, axis=1)
                 return self.fusion.head(xcat)
             case 'attention':
-                xcat = self.fusion.extra_attention(xcat)
-                xcat = torch.sum(xcat, axis=1)
+                # attention for each embedding
+                atts = {}
+                for key, embedding in embeddings.items():
+                    atts[key] = self.fusion.attention[key](embedding)
+
+                # attention weight
+                acat = torch.cat(list(atts.values()), axis=1)
+                aweights = F.softmax(acat, dim=1)
+
+                weighted_embeddings = {}
+                for i, (key, embedding) in enumerate(embeddings.items()):
+                    weighted_embeddings[key] = embedding * aweights[:, i]
+
+                xcat = torch.cat(list(weighted_embeddings.values()), axis=1)
+                # fuse by averaging
+                xcat = torch.mean(xcat, axis=1)
+                # apply standard classification layer
                 return self.fusion.head(xcat)
 
 class SimpleConvNet(nn.Module):
