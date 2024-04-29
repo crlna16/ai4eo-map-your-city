@@ -123,19 +123,30 @@ class TIMMCollectionCombined(nn.Module):
         self.add_module('fusion', self.fusion)
 
 
-    def forward(self, x: Dict[str, torch.Tensor]) -> torch.Tensor:
+    def forward(self, 
+                x: Dict[str, torch.Tensor],
+                drop_modalities: Dict[str, float]=None
+                ) -> torch.Tensor:
         '''
         Combine models before the original classification head stage
 
         Arguments:
             x (Dict[str, torch.Tensor]): Images as key-value pairs. Matches with ModuleDict.
+            drop_modalities (Dict[str, float]): Probability to drop a modality during training. 
         '''
 
         embeddings = {}
         for key, encoder in self.models.items():
             if not key in x: # missing in input
-                print(f'{key} is missing in input dict')
+                log.info(f'{key} is missing in input dict')
                 continue
+
+            if drop_modalities is not None: # randomly drop modality
+                zeta = np.random.rand()
+                if zeta < drop_modalities[key]:
+                    log.info(f'Drop modality {key} with zeta = {zeta:.2f} / {drop_modalities[key]:.2f}')
+                    continue
+
             embeddings[key] = encoder(x[key]).unsqueeze(1)
 
 

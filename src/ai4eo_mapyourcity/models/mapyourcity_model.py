@@ -31,6 +31,7 @@ class MapYourCityModel(LightningModule):
                  weighted_loss: bool,
                  class_weights: Dict,
                  loss_id: str,
+                 drop_modalities: Dict,
                  validation_metric: str
                  ):
         '''
@@ -44,6 +45,7 @@ class MapYourCityModel(LightningModule):
             learning_rate (float): Optimizer learning rate.
             weight_decay (float): Optimizer weight decay.
             loss_id (str): Choice of loss function.
+            drop_modalities (Dict): Percentage of the modality is dropped in valid / train.
             num_classes (int): Number of classes.
 
         Raises:
@@ -57,6 +59,8 @@ class MapYourCityModel(LightningModule):
         self.save_hyperparameters(logger=False)
 
         self.backbone = backbone
+        self.drop_modalities = drop_modalities
+        self.loss_id = loss_id
 
         # metrics
         self.validation_metric = validation_metric
@@ -69,6 +73,8 @@ class MapYourCityModel(LightningModule):
                                                             threshold=None,
                                                             num_classes=num_classes,
                                                             normalize='true')
+            case 'r2_score':
+                self.r2score = torchmetrics.R2Score()
             case _:
                 raise ValueError('Validation metric not implemented:', validation_metric)
 
@@ -87,6 +93,11 @@ class MapYourCityModel(LightningModule):
                     self.criterion = OrdinalCrossEntropyLoss(num_classes, weight=self.class_weights)
                 else:
                     self.criterion = OrdinalCrossEntropyLoss(num_classes)
+            case 'mse':
+                if self.weighted_loss:
+                    raise NotImplementedError('Combination MSE + weighted loss not implemented')
+                else:
+                    self.criterion = nn.MSELoss()
             case _:
                 raise ValueError('Loss ID not implemented:', loss_id)
 
@@ -101,26 +112,31 @@ class MapYourCityModel(LightningModule):
     def forward(self, x):
         return self.backbone(x)
 
-    def step(self, batch):
+    def step(self, batch, drop_modalities=None):
         '''
         Any step processes batch to return loss and predictions
         '''
 
         x, y, pid = batch
-        prediction = self.backbone(x)
+        prediction = self.backbone(x, drop_modalities=drop_modalities)
         y_hat = torch.argmax(prediction, dim=-1)
 
-        loss = self.criterion(prediction, y)
+        if self.loss_id == 'mse':
+            loss = self.criterion(prediction, y.float())
+        else:
+            loss = self.criterion(prediction, y)
 
         if self.validation_metric == 'accuracy':
             metric = self.acc(y_hat, y)
         elif self.validation_metric == 'confusion_matrix':
             metric = self.confmat(y_hat, y).diag().mean()
+        elif self.validation_metric == 'r2_score':
+            metric = self.r2score(y_hat, y)
 
         return loss, metric, y_hat, y, pid
 
     def training_step(self, batch, batch_idx):
-        loss, metric, _, _, _ = self.step(batch)
+        loss, metric, _, _, _ = self.step(batch, drop_modalities=self.drop_modalities)
 
         self.log('train_loss', loss)
         self.log('train_metric', metric)
@@ -128,19 +144,19 @@ class MapYourCityModel(LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        loss, metric, _, _, _ = self.step(batch)
+        loss, metric, _, _, _ = self.step(batch, drop_modalities=self.drop_modalities)
 
         self.log('valid_loss', loss, on_epoch=True, on_step=False, sync_dist=True)
         self.log('valid_metric', metric, on_epoch=True, on_step=False, sync_dist=True)
 
     def predict_step(self, batch, batch_idx):
-        _, _, y_hat, _, pid = self.step(batch)
+        _, _, y_hat, _, pid = self.step(batch, drop_modalities=self.drop_modalities)
 
         self.valid_predictions['pid'].extend(list(pid))
         self.valid_predictions['predicted_label'].extend(list(y_hat.squeeze().cpu().numpy()))
 
     def test_step(self, batch, batch_idx):
-        loss, metric, y_hat, _, pid = self.step(batch)
+        loss, metric, y_hat, _, pid = self.step(batch, drop_modalities=None) # never drop during test
 
         self.test_predictions['pid'].extend(list(pid))
         if len(y_hat.shape) == 1:

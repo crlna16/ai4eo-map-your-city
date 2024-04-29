@@ -13,4 +13,8 @@ class_weights:
   '6' : 0.219
 validation_metric: confusion_matrix
 loss_id: cross_entropy
+drop_modalities:
+  'topview': 0.0
+  'sentinel2': 0.0
+  'streetview': 0.0
 backbone: null
