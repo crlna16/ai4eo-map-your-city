@@ -187,13 +187,16 @@ class OrdinalCrossEntropyLoss(nn.Module):
             Loss.
         '''
 
-        batch_size = targets.size(0)
-        binary_targets = torch.zeros_like(logits)
-        for i in range(batch_size):
-            k = targets[i]
-            if k < self.num_classes:
-                binary_targets[i, k:] = 1
+        #batch_size = targets.size(0)
+        #binary_targets = torch.zeros_like(logits)
+        #for i in range(batch_size):
+        #    k = targets[i]
+        #    if k < self.num_classes:
+        #        binary_targets[i, k:] = 1
 
-        loss = F.binary_cross_entropy_with_logits(logits, binary_targets, weight=self.weight, reduction='mean')
+        #loss = F.binary_cross_entropy_with_logits(logits, binary_targets, weight=self.weight, reduction='mean')
 
-        return loss
+        alpha = torch.abs( torch.argmax(logits, dim=1) - targets ) / ( self.num_classes - 1 )
+        CE = F.cross_entropy(logits, targets, weight=self.weight, reduction='none')
+
+        return torch.mean((1 + alpha) * CE)
