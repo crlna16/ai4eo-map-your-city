@@ -112,10 +112,6 @@ class TIMMCollectionCombined(nn.Module):
                 self.fusion.head = nn.Linear(self.out_features, self.num_classes)
             case 'max':
                 self.fusion.head = nn.Linear(self.out_features, self.num_classes)
-            case 'learned_weighted_average':
-                self.fusion.weights = nn.ParameterList([nn.Parameter(torch.rand(self.num_models))])
-                self.fusion.head = nn.Sequential(nn.LayerNorm(self.out_features),
-                                                 nn.Linear(self.out_features, self.num_classes))
             case 'attention':
                 self.fusion.attention = nn.ModuleDict({'topview':nn.Linear(self.out_features, 1),
                                                        'streetview':nn.Linear(self.out_features, 1),

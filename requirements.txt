@@ -189,7 +189,7 @@ tensorboard==2.16.2
 tensorboard-data-server==0.7.2
 threadpoolctl==3.4.0
 timm==0.9.16
-tokenizers==0.15.2
+tokenizers
 tomli==2.0.1
 tomlkit==0.12.4
 torch==2.2.0
