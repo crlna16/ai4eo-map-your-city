@@ -156,3 +156,5 @@ mlruns
 # My
 submissions/
 slurm/
+*.sh
+*.txt

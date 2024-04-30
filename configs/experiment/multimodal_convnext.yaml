@@ -1,0 +1,41 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=example
+
+defaults:
+  - override /datamodule: combined.yaml
+  - override /model: timm_combined.yaml
+  - override /trainer: default.yaml
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+# name of the run determines folder name in logs
+name: "multimodal"
+
+seed: 404
+
+model:
+  weighted_loss: True
+  drop_modalities:
+    'topview': 0.0
+    'sentinel2': 0.0
+    'streetview': 0.2
+  backbone:
+    fusion_mode: attention
+    model_id: 
+      topview: convnext_tiny.fb_in22k      
+      streetview: convnext_tiny.fb_in22k      
+      sentinel2: convnext_tiny.fb_in22k      
+
+datamodule:
+  batch_size: 32
+  dataset_options:
+    dataset_options_topview:
+      transform: default
+    dataset_options_streetview:
+      transform: default
+      img_file: street_segmbbox.jpg
+    dataset_options_sentinel2:
+      transform: patch
