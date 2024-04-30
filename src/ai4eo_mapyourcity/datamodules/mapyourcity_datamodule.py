@@ -235,7 +235,7 @@ class PhotoDataset(MapYourCityDataset):
                     trafo1 = [ v2.Resize(size=(self.input_size, self.input_size), interpolation=3),]
 
             case 'resize':
-                trafo1 = [ v2.Resize(size=(self.input_size, self.input_size), interpolation=2), ]
+                trafo1 = [ v2.Resize(size=(self.input_size, self.input_size), interpolation=3), ]
 
             case 'center_crop':
                 trafo1 = [ v2.CenterCrop(size=(self.input_size, self.input_size)), ]
@@ -529,9 +529,13 @@ class MapYourCityCombinedDataModule(L.LightningDataModule):
         '''
 
         log.info(f'--- Split: {stage} ---')
-        self.train_data = CombinedDataset(self.dataset_options, split='train')
-        self.valid_data = CombinedDataset(self.dataset_options, split='valid')
-        self.test_data = CombinedDataset(self.dataset_options, split='test')
+        if stage == 'test':
+            self.valid_data = CombinedDataset(self.dataset_options, split='valid')
+            self.test_data = CombinedDataset(self.dataset_options, split='test')
+        else:
+            self.train_data = CombinedDataset(self.dataset_options, split='train')
+            self.valid_data = CombinedDataset(self.dataset_options, split='valid')
+            self.test_data = CombinedDataset(self.dataset_options, split='test')
 
     def prepare_data(self):
         pass

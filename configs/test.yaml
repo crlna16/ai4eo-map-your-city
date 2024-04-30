@@ -6,7 +6,7 @@ defaults:
   - datamodule: combined.yaml # choose the datamodule for evaluation
   - model: timm_combined.yaml
   - callbacks: null
-  - logger: null
+  - logger: tensorboard.yaml
   - trainer: default.yaml
   - log_dir: evaluation.yaml
 
@@ -19,7 +19,6 @@ defaults:
 original_work_dir: ${hydra:runtime.cwd}/..
 
 # matches train.yaml
-data_dir: ${original_work_dir}/data/
 data_dir: ${original_work_dir}/data/AI4EO-MapYourCity/v1/building-age-dataset/
 fold: 0
 fold_dir: ${original_work_dir}/data/AI4EO-MapYourCity/splits/
