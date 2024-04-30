@@ -136,7 +136,7 @@ class MapYourCityModel(LightningModule):
         return loss, metric, y_hat, y, pid
 
     def training_step(self, batch, batch_idx):
-        loss, metric, _, _, _ = self.step(batch, drop_modalities=self.drop_modalities)
+        loss, metric, _, _, _ = self.step(batch, drop_modalities=None) # train with all modalities
 
         self.log('train_loss', loss)
         self.log('train_metric', metric)
