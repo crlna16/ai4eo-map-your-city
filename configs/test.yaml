@@ -3,8 +3,8 @@
 # specify here default evaluation configuration
 defaults:
   - _self_
-  - datamodule: topview.yaml # choose the datamodule for evaluation
-  - model: vision_transformer.yaml
+  - datamodule: combined.yaml # choose the datamodule for evaluation
+  - model: timm_combined.yaml
   - callbacks: null
   - logger: null
   - trainer: default.yaml
@@ -16,9 +16,13 @@ defaults:
   - override hydra/hydra_logging: colorlog
   - override hydra/job_logging: colorlog
 
-original_work_dir: ${hydra:runtime.cwd}
+original_work_dir: ${hydra:runtime.cwd}/..
 
+# matches train.yaml
 data_dir: ${original_work_dir}/data/
+data_dir: ${original_work_dir}/data/AI4EO-MapYourCity/v1/building-age-dataset/
+fold: 0
+fold_dir: ${original_work_dir}/data/AI4EO-MapYourCity/splits/
 
 print_config: True
 
@@ -27,6 +31,9 @@ ignore_warnings: True
 seed: null
 
 name: "default"
+
+trainer:
+  devices: 1
 
 # passing checkpoint path is necessary
 ckpt_path: logs/experiments/runs/default/2022-03-21_04-40-51/checkpoints/last.ckpt
