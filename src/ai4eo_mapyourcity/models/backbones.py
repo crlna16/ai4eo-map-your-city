@@ -85,17 +85,22 @@ class TIMMCollectionCombined(nn.Module):
         '''
         super().__init__()
 
-        self.out_features = max(out_features.values())
         self.num_classes = num_classes
         self.fusion_mode = fusion_mode
 
         model_dict = {}
+        out_features_dict = {}
         for key, value in model_id.items():
             if value is None:
                 log.info(f'Skipping modality {key}')
             else:
                 log.info(f'Creating TIMM model {model_id[key]} for modality {key}')
                 model_dict[key] = timm.create_model(model_id[key], pretrained=is_pretrained, num_classes=0)
+                # use only when model is used
+                out_features_dict[key] = out_features[key]
+
+        self.out_features_dict = out_features_dict
+        self.out_features = min(self.out_features_dict.values())
 
         self.models = nn.ModuleDict(model_dict)
 
@@ -118,6 +123,26 @@ class TIMMCollectionCombined(nn.Module):
                     module_dict[key] = nn.Linear(self.out_features, 1)
 
                 self.fusion.attention = nn.ModuleDict(module_dict)
+                self.fusion.head = nn.Linear(self.out_features, self.num_classes)
+            case 'attention2':
+                # https://github.com/facebookresearch/multimodal/blob/dbeed9724bc9099be173c86871df7d41f3b7e58c/torchmultimodal/modules/fusions/attention_fusion.py
+                #attn_in_dim = sum(self.out_features_dict.values())
+                #self.fusion.attention = nn.Sequential(
+                #    nn.Linear(attn_in_dim, self.num_models),
+                #    nn.Softmax(-1),
+                #)
+                module_dict = {}
+                for key, value in self.models.items():
+                    module_dict[key] = nn.Linear(self.out_features, 1)
+
+                self.fusion.attention = nn.ModuleDict(module_dict)
+
+                encoding_projection = {}
+                for key in self.models.keys():
+                    encoding_projection[key] = nn.Linear(
+                        self.out_features_dict[key], self.out_features
+                    )
+                self.fusion.encoding_projection = nn.ModuleDict(encoding_projection)
                 self.fusion.head = nn.Linear(self.out_features, self.num_classes)
             case _:
                 raise ValueError('Invalid fusion mode: ', self.fusion_mode)
@@ -193,6 +218,25 @@ class TIMMCollectionCombined(nn.Module):
                 xcat = torch.mean(xcat, axis=1)
                 # apply standard classification layer
                 return self.fusion.head(xcat)
+            case 'attention2':
+                #xcat = torch.cat(list(embeddings.values()), dim=-1)
+                #aweights = self.fusion.attention(xcat)
+                atts = {}
+                for key, embedding in embeddings.items():
+                    atts[key] = self.fusion.attention[key](embedding)
+
+                # attention weight
+                acat = torch.cat(list(atts.values()), axis=1)
+                aweights = F.softmax(acat, dim=1)
+
+                projected_embeddings = {}
+                for i, (key, projection) in enumerate(self.fusion.encoding_projection.items()):
+                    projected_embedding = projection(embeddings[key])
+                    projected_embeddings[key] = projected_embedding * aweights[:,i]
+
+                xcat = torch.cat(list(projected_embeddings.values()), axis=1)
+                xcat = torch.sum(xcat, axis=1)
+                return self.fusion.head(xcat)
 
 class SimpleConvNet(nn.Module):
     '''
@@ -205,8 +249,8 @@ class SimpleConvNet(nn.Module):
     def __init__(self, 
                  input_size,
                  num_classes,
-                 in_channels,
-                 out_channels,
+                 in_keys,
+                 out_keys,
                  kernel_size,
                  pool_size,
                  mid_units,
@@ -219,8 +263,8 @@ class SimpleConvNet(nn.Module):
         Arguments:
             input_size (int): Image input size (assumes quadratic shape)
             num_classes (int): Number of classes
-            in_channels (int): Number of input channels
-            out_channels (int): Number of output channels (of convolutional block)
+            in_keys (int): Number of input channels
+            out_keys (int): Number of output channels (of convolutional block)
             kernel_size (int): Convolutional kernel size.
             pool_size (int): MaxPool size.
             mid_units (int): Number of neurons after flattening.
@@ -234,15 +278,15 @@ class SimpleConvNet(nn.Module):
         mysize = np.ceil((mysize - 1) / pool_size)
         mysize = mysize - kernel_size + 1
         mysize = np.ceil((mysize - 1) / pool_size)
-        flattened_size = int( mysize * mysize * out_channels)
+        flattened_size = int( mysize * mysize * out_keys)
 
         kernel_tuple = (kernel_size, kernel_size)
         pool_tuple = (pool_size, pool_size)
 
         self.backbone = nn.Sequential(
-                         nn.Conv2d(in_channels, out_channels, kernel_tuple),
+                         nn.Conv2d(in_keys, out_channels, kernel_tuple),
                          nn.MaxPool2d(pool_tuple),
-                         nn.Conv2d(out_channels, out_channels, kernel_tuple),
+                         nn.Conv2d(out_keys, out_channels, kernel_tuple),
                          nn.MaxPool2d(pool_tuple),
                          nn.Flatten(),
                          nn.Linear(flattened_size, 2 * mid_units),

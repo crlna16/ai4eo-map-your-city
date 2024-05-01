@@ -1,0 +1,39 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=example
+
+defaults:
+  - override /datamodule: combined.yaml
+  - override /model: timm_combined.yaml
+  - override /trainer: default.yaml
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+# name of the run determines folder name in logs
+name: "multimodal_swin_04-30_A"
+
+seed: 404
+
+model:
+  weighted_loss: True
+  drop_modalities:
+    'streetview': 0.2
+  backbone:
+    fusion_mode: attention2
+    model_id: 
+      topview: swinv2_small_window16_256.ms_in1k
+      streetview: swinv2_small_window16_256.ms_in1k
+      sentinel2: swinv2_small_window16_256.ms_in1k
+
+datamodule:
+  batch_size: 16
+  dataset_options:
+    dataset_options_topview:
+      transform: resize 
+    dataset_options_streetview:
+      transform: resize 
+      img_file: street_segmbox.jpg
+    dataset_options_sentinel2:
+      transform: patch
