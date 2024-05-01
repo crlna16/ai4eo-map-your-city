@@ -65,6 +65,8 @@ class MapYourCityDataset(Dataset):
             self.config = timm.data.resolve_model_data_config(options['model_id'])
             self.input_size = int( self.config['input_size'][1] / self.config['crop_pct'] )
 
+        log.info(self.config)
+
         self.transforms = lambda x: x  # assigned by subclass # TODO move to function
 
         # list of files
@@ -224,6 +226,9 @@ class PhotoDataset(MapYourCityDataset):
                  ):
         super().__init__(options, split)
 
+        if options['input_size'] != 'default':
+            self.input_size = options['input_size']
+
         match options['transform']:
             case 'default':
                 if split == 'train':
@@ -293,6 +298,9 @@ class Sentinel2Dataset(MapYourCityDataset):
                  split: str = 'train'
                  ):
         super().__init__(options, split)
+
+        if options['input_size'] != 'default':
+            self.input_size = options['input_size']
 
         self.transform = options['transform']
 

@@ -113,9 +113,11 @@ class TIMMCollectionCombined(nn.Module):
             case 'max':
                 self.fusion.head = nn.Linear(self.out_features, self.num_classes)
             case 'attention':
-                self.fusion.attention = nn.ModuleDict({'topview':nn.Linear(self.out_features, 1),
-                                                       'streetview':nn.Linear(self.out_features, 1),
-                                                       'sentinel2':nn.Linear(self.out_features, 1)})
+                module_dict = {}
+                for key, value in self.models.items():
+                    module_dict[key] = nn.Linear(self.out_features, 1)
+
+                self.fusion.attention = nn.ModuleDict(module_dict)
                 self.fusion.head = nn.Linear(self.out_features, self.num_classes)
             case _:
                 raise ValueError('Invalid fusion mode: ', self.fusion_mode)
@@ -148,7 +150,6 @@ class TIMMCollectionCombined(nn.Module):
                     continue
 
             embeddings[key] = encoder(x[key]).unsqueeze(1)
-
 
         match self.fusion_mode:
             case 'concatenate':

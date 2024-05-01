@@ -11,9 +11,12 @@ dataset_options:
   dataset_options_topview:
     transform: default
     img_file: orthophoto.tif
+    input_size: default
   dataset_options_streetview:
     transform: default
     img_file: street.jpg
+    input_size: default
   dataset_options_sentinel2:
     transform: patch
     img_file: s2_l2a.tif
+    input_size: default
