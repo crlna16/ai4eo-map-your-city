@@ -4,8 +4,8 @@
 # python train.py experiment=example
 
 defaults:
-  - override /datamodule: topview.yaml
-  - override /model: timm.yaml
+  - override /datamodule: combined.yaml
+  - override /model: timm_combined.yaml
   - override /trainer: default.yaml
 
 # all parameters below will be merged with parameters from default configurations set above
@@ -19,7 +19,14 @@ seed: 404
 model:
   weighted_loss: True
   backbone:
-    model_id: swinv2_tiny_window16_256.ms_in1k
+    fusion_mode: concatenate
+    model_id: 
+      topview: swinv2_small_window16_256.ms_in1k
+      streetview: null
+      sentinel2: null
 
 datamodule:
   batch_size: 32
+  dataset_options:
+    dataset_options_topview:
+      transform: resize 

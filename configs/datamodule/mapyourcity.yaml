@@ -12,10 +12,6 @@ dataset_options:
   model_id: ${model.backbone.model_id}
 
   # for compatibility
-  img_file: overwrite.jpg
-  use_topview: null
-  use_streetview: null 
-  use_sentinel2: null 
   dataset_options_topview: null
   dataset_options_streetview: null
   dataset_options_sentinel2: null

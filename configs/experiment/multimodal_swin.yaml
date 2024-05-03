@@ -12,17 +12,17 @@ defaults:
 # this allows you to overwrite only specified parameters
 
 # name of the run determines folder name in logs
-name: "multimodal_swin_05-02_B"
+name: "multimodal_swin_05-03_C"
 
 seed: 404
 
 model:
   weighted_loss: True
   drop_modalities:
-    'streetview': 0.2
+    'streetview': 0.0
   backbone:
     fusion_mode: attention2
-    model_id: 
+    model_id:
       topview: swinv2_small_window16_256.ms_in1k
       streetview: swinv2_small_window16_256.ms_in1k
       sentinel2: swinv2_small_window16_256.ms_in1k
@@ -30,10 +30,11 @@ model:
 datamodule:
   batch_size: 16
   dataset_options:
+    fold_key: random_stratified_labels_cities_noHUN
+    dataset_options_streetview:
+      transform: default
+      img_file: street.jpg
     dataset_options_topview:
       transform: resize 
-    dataset_options_streetview:
-      transform: resize 
-      img_file: street_segmbox.jpg
     dataset_options_sentinel2:
       transform: patch

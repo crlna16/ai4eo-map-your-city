@@ -180,7 +180,7 @@ class TIMMCollectionCombined(nn.Module):
             case 'concatenate':
                 # common classification head
                 xcat = torch.cat(list(embeddings.values()), axis=1)
-                xcat = xcat.flatten()
+                xcat = xcat.squeeze(1)
                 return self.fusion.head(xcat)
             case 'average':
                 xcat = torch.cat(list(embeddings.values()), axis=1)

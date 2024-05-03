@@ -74,4 +74,4 @@ def test(config: DictConfig) -> None:
     trainer.test(model=model, dataloaders=test_dataloader, ckpt_path=config.ckpt_path)
 
     test_predictions = pd.DataFrame(model.test_predictions)
-    test_predictions.to_csv(f'test_predictions_fold_{datamodule.dataset_options["fold"]}.csv', index=False)
+    test_predictions.to_csv(f'test_predictions.csv', index=False)
