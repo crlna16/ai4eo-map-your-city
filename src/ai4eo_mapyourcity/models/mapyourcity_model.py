@@ -153,7 +153,10 @@ class MapYourCityModel(LightningModule):
         _, _, y_hat, _, pid = self.step(batch, drop_modalities=self.drop_modalities)
 
         self.valid_predictions['pid'].extend(list(pid))
-        self.valid_predictions['predicted_label'].extend(list(y_hat.squeeze().cpu().numpy()))
+        if len(y_hat.shape) == 1:
+            self.valid_predictions['predicted_label'].extend(list(y_hat.cpu().numpy()))
+        else:
+            self.valid_predictions['predicted_label'].extend(list(y_hat.squeeze().cpu().numpy()))
 
     def test_step(self, batch, batch_idx):
         loss, metric, y_hat, _, pid = self.step(batch, drop_modalities=None) # never drop during test

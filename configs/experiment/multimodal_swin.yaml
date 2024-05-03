@@ -12,7 +12,7 @@ defaults:
 # this allows you to overwrite only specified parameters
 
 # name of the run determines folder name in logs
-name: "multimodal_swin_04-30_A"
+name: "multimodal_swin_05-02_B"
 
 seed: 404
 

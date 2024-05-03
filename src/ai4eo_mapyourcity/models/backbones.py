@@ -230,8 +230,8 @@ class TIMMCollectionCombined(nn.Module):
                 aweights = F.softmax(acat, dim=1)
 
                 projected_embeddings = {}
-                for i, (key, projection) in enumerate(self.fusion.encoding_projection.items()):
-                    projected_embedding = projection(embeddings[key])
+                for i, (key, embedding) in enumerate(embeddings.items()):
+                    projected_embedding = self.fusion.encoding_projection[key](embedding)
                     projected_embeddings[key] = projected_embedding * aweights[:,i]
 
                 xcat = torch.cat(list(projected_embeddings.values()), axis=1)

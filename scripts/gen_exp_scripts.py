@@ -22,5 +22,5 @@ with open(os.path.join(sroot, 'batch.sh'), 'w') as ff:
     
             f.close()
         ff.write(f'sbatch {sf}\n')
-        ff.write('sleep 10\n')
+        ff.write('sleep 100\n')
     ff.close()

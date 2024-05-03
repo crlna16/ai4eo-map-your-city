@@ -78,6 +78,10 @@ class MapYourCityDataset(Dataset):
         elif split == 'test':
             csv_path = os.path.join(options["data_dir"], 'test', 'test-set.csv')
             data_path = os.path.join(options["data_dir"], 'test', 'data')
+        elif split == 'dev':
+            csv_path = os.path.join(options['fold_dir'], 'dev-set.csv')
+            data_path = os.path.join(options["data_dir"], 'train', 'data')
+
 
         df = pd.read_csv(csv_path)
 
@@ -236,7 +240,7 @@ class PhotoDataset(MapYourCityDataset):
                                                     scale=(0.08, 1.0),
                                                     ratio=(0.75, 1.3333),
                                                     interpolation=3),]
-                elif split in ['valid', 'test']:
+                elif split in ['valid', 'dev', 'test']:
                     trafo1 = [ v2.Resize(size=(self.input_size, self.input_size), interpolation=3),]
 
             case 'resize':
@@ -320,7 +324,7 @@ class Sentinel2Dataset(MapYourCityDataset):
                                               contrast=(0.6, 1.4),
                                               saturation=(0.6, 1.4),
                                               hue=None),]
-                elif split in ['valid', 'test']:
+                elif split in ['valid', 'dev', 'test']:
                     trafo1 = [ v2.Resize(size=(self.input_size, self.input_size), interpolation=3),]
 
                 trafo0 = [v2.ToImage()]
@@ -538,11 +542,12 @@ class MapYourCityCombinedDataModule(L.LightningDataModule):
 
         log.info(f'--- Split: {stage} ---')
         if stage == 'test':
-            self.valid_data = CombinedDataset(self.dataset_options, split='valid')
+            self.dev_data = CombinedDataset(self.dataset_options, split='dev')
             self.test_data = CombinedDataset(self.dataset_options, split='test')
         else:
             self.train_data = CombinedDataset(self.dataset_options, split='train')
             self.valid_data = CombinedDataset(self.dataset_options, split='valid')
+            self.dev_data = CombinedDataset(self.dataset_options, split='dev')
             self.test_data = CombinedDataset(self.dataset_options, split='test')
 
     def prepare_data(self):
@@ -555,6 +560,10 @@ class MapYourCityCombinedDataModule(L.LightningDataModule):
     def valid_dataloader(self):
         '''Returns: DataLoader'''
         return DataLoader(dataset=self.valid_data, batch_size=self.batch_size, num_workers=self.num_workers, pin_memory=self.pin_memory, shuffle=False)
+
+    def dev_dataloader(self):
+        '''Returns: DataLoader'''
+        return DataLoader(dataset=self.dev_data, batch_size=1, num_workers=self.num_workers, pin_memory=self.pin_memory, shuffle=False)
 
     def test_dataloader(self):
         '''Returns: DataLoader'''

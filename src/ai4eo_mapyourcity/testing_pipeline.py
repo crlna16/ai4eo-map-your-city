@@ -41,7 +41,7 @@ def test(config: DictConfig) -> None:
     log.info(f"Instantiating datamodule <{config.datamodule._target_}>")
     datamodule: LightningDataModule = hydra.utils.instantiate(config.datamodule)
     datamodule.setup(stage='test')
-    valid_dataloader = datamodule.valid_dataloader()
+    dev_dataloader = datamodule.dev_dataloader()
     test_dataloader = datamodule.test_dataloader()
 
     # Init lightning model
@@ -63,12 +63,12 @@ def test(config: DictConfig) -> None:
     # Log hyperparameters
     trainer.logger.log_hyperparams({"ckpt_path": config.ckpt_path})
 
-    # save predictions for validation set
+    # save predictions for development set
     log.info("Starting prediction!")
-    trainer.predict(model=model, dataloaders=valid_dataloader, ckpt_path=config.ckpt_path)
+    trainer.predict(model=model, dataloaders=dev_dataloader, ckpt_path=config.ckpt_path)
 
-    valid_predictions = pd.DataFrame(model.valid_predictions)
-    valid_predictions.to_csv(f'valid_predictions_fold_{datamodule.dataset_options["fold"]}.csv', index=False)
+    dev_predictions = pd.DataFrame(model.valid_predictions)
+    dev_predictions.to_csv(f'dev_predictions.csv', index=False)
 
     log.info("Starting testing!")
     trainer.test(model=model, dataloaders=test_dataloader, ckpt_path=config.ckpt_path)
