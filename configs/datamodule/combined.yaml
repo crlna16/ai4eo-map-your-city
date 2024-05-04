@@ -4,10 +4,16 @@ defaults:
   - mapyourcity.yaml
 
 batch_size: 32
+num_workers: 8
+pin_memory: False
 
 dataset_options:
   transform: default
   model_id: ${model.backbone.model_id}
+  data_dir: ${data_dir} # data_dir is specified in train.yaml
+  fold: ${fold} # is specified in train.yaml
+  fold_dir: ${fold_dir}
+  fold_key: random_stratified_labels_cities
   dataset_options_topview:
     transform: default
     img_file: orthophoto.tif

@@ -445,67 +445,6 @@ class Sentinel2Dataset(MapYourCityDataset):
 
         return patch
 
-class MapYourCityDataModule(L.LightningDataModule):
-    '''
-    Generic datamodule for MapYourCity data
-
-    Arguments:
-      batch_size (int) : the mini-batch size
-      num_workers (int) : the number of workers
-      pin_memory (bool) : if True, pin GPU memory
-      dataset_options (dict) : dictionary of options to pass on to the dataset
-
-    '''
-    def __init__(self,
-                 batch_size: int,
-                 num_workers: int,
-                 pin_memory: bool,
-                 dataset_options: Dict
-                 ):
-        super().__init__()
-
-        self.batch_size = batch_size
-        self.num_workers = num_workers
-        self.pin_memory = pin_memory
-        self.dataset_options = dataset_options
-
-        self.train_data = None
-        self.valid_data = None
-        self.test_data = None
-
-    def setup(self, stage='fit'):
-        '''
-        Train, valid and test data
-        '''
-
-        match self.dataset_options['img_file']:
-            case 'street.jpg' | 'orthophoto.tif':
-                self.train_data = PhotoDataset(self.dataset_options, split='train')
-                self.valid_data = PhotoDataset(self.dataset_options, split='valid')
-                self.test_data = PhotoDataset(self.dataset_options, split='test')
-            case 's2_l2a.tif':
-                self.train_data = Sentinel2Dataset(self.dataset_options, split='train')
-                self.valid_data = Sentinel2Dataset(self.dataset_options, split='valid')
-                self.test_data = Sentinel2Dataset(self.dataset_options, split='test')
-            case _:
-                raise ValueError('Invalid file', self.dataset_options['img_file'])
-
-
-    def prepare_data(self):
-        pass
-
-    def train_dataloader(self):
-        '''Returns: DataLoader'''
-        return DataLoader(dataset=self.train_data, batch_size=self.batch_size, num_workers=self.num_workers, pin_memory=self.pin_memory, shuffle=True)
-
-    def valid_dataloader(self):
-        '''Returns: DataLoader'''
-        return DataLoader(dataset=self.valid_data, batch_size=self.batch_size, num_workers=self.num_workers, pin_memory=self.pin_memory, shuffle=False)
-
-    def test_dataloader(self):
-        '''Returns: DataLoader'''
-        return DataLoader(dataset=self.test_data, batch_size=self.batch_size, num_workers=self.num_workers, pin_memory=self.pin_memory, shuffle=False)
-
 class MapYourCityCombinedDataModule(L.LightningDataModule):
     '''
     Generic datamodule for MapYourCity data

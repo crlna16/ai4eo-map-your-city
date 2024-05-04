@@ -1,8 +1,0 @@
-_target_: ai4eo_mapyourcity.datamodules.mapyourcity_datamodule.MapYourCityDataModule
-
-defaults:
-  - mapyourcity.yaml
-
-dataset_options:
-  img_file: orthophoto.tif
-  transform: default
