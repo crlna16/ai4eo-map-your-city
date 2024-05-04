@@ -1,28 +1,28 @@
 _target_: ai4eo_mapyourcity.datamodules.mapyourcity_datamodule.MapYourCityCombinedDataModule
 
-defaults:
-  - mapyourcity.yaml
-
 batch_size: 32
 num_workers: 8
 pin_memory: False
 
 dataset_options:
   transform: default
-  model_id: ${model.backbone.model_id}
   data_dir: ${data_dir} # data_dir is specified in train.yaml
   fold: ${fold} # is specified in train.yaml
   fold_dir: ${fold_dir}
   fold_key: random_stratified_labels_cities
+  model_id: ${model.backbone.model_id}
   dataset_options_topview:
     transform: default
     img_file: orthophoto.tif
     input_size: default
+    model_id: ${model.backbone.model_id.topview}
   dataset_options_streetview:
     transform: default
     img_file: street.jpg
     input_size: default
+    model_id: ${model.backbone.model_id.streetview}
   dataset_options_sentinel2:
     transform: patch
     img_file: s2_l2a.tif
     input_size: default
+    model_id: ${model.backbone.model_id.sentinel2}

@@ -12,29 +12,27 @@ defaults:
 # this allows you to overwrite only specified parameters
 
 # name of the run determines folder name in logs
-name: "topview_streetview_05-03_B"
+name: "topview_streetview_05-04_B"
 
 seed: 404
 
 model:
   weighted_loss: True
   backbone:
-    fusion_mode: attention2
+    fusion_mode: attention
     model_id:
-      topview: swinv2_base_window12to24_192to384.ms_in22k_ft_in1k
-      streetview: swinv2_base_window12to24_192to384.ms_in22k_ft_in1k
+      topview: efficientnet_b5.sw_in12k
+      streetview: efficientnet_b5.sw_in12k
       sentinel2: null
     out_features:
-      topview: 1024
-      streetview: 1024
+      topview: 2048
+      streetview: 2048
 
 datamodule:
-  batch_size: 16
+  batch_size: 8
   dataset_options:
     dataset_options_streetview:
-      input_size: 384
-      transform: default
+      transform: resize 
       img_file: street.jpg
     dataset_options_topview:
-      input_size: 384
       transform: resize 

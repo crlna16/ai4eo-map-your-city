@@ -16,6 +16,7 @@ from torch.utils.data import DataLoader, Dataset
 from PIL import Image
 import rasterio
 import timm
+from timm.models import helpers
 
 from ai4eo_mapyourcity import utils
 log = utils.get_logger(__name__)
@@ -60,12 +61,17 @@ class MapYourCityDataset(Dataset):
 
         # get config from pretrained model
         if options['model_id'] is None:
+            log.info('No model ID found - using default config')
             self.config = {'mean':[0.5, 0.5, 0.5], 'std':[0.5, 0.5, 0.5]}
         else:
-            self.config = timm.data.resolve_model_data_config(options['model_id'])
-            self.input_size = int( self.config['input_size'][1] / self.config['crop_pct'] )
+            log.info(f'Resolving config from pretrained model {options["model_id"]}')
+            pretrained_cfg = helpers.resolve_pretrained_cfg(options['model_id'])
+            self.config = {'mean': pretrained_cfg.mean, 'std': pretrained_cfg.std}
+            #self.input_size = int( pretrained_cfg.input_size[1] / pretrained_cfg.crop_pct )
+            self.input_size = pretrained_cfg.input_size[1]
 
         log.info(self.config)
+        log.info(f'Input size: {self.input_size}')
 
         self.transforms = lambda x: x  # assigned by subclass # TODO move to function
 
