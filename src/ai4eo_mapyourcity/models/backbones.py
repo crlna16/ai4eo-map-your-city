@@ -13,33 +13,6 @@ import numpy as np
 from ai4eo_mapyourcity import utils
 log = utils.get_logger(__name__)
 
-class TIMMCollection(nn.Module):
-    '''
-    Pretrained TIMM Model backbone.
-
-    Attributes:
-        model (torch.nn.Module): Pretrained model from TIMM.
-    '''
-    def __init__(self,
-                 num_classes: int,
-                 model_id: str,
-                 is_pretrained: bool
-                 ):
-        '''
-        Initialize the TIMMCollection instance.
-
-        Arguments:
-            num_classes (int): Number of classes.
-            is_pretrained (bool): If True, use pretrained weights.
-            model_id (str): The model to select (check TIMM collection on Huggingface for options)
-
-        '''
-        super().__init__()
-        self.model = timm.create_model(model_id, pretrained=is_pretrained, num_classes=num_classes)
-
-    def forward(self, x):
-        return self.model(x)
-
 class TIMMCollectionCombined(nn.Module):
     '''
     A model combining several pretrained TIMM models for different modalities.
