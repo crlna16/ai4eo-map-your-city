@@ -125,7 +125,9 @@ class TIMMCollectionCombined(nn.Module):
 
     def forward(self, 
                 x: Dict[str, torch.Tensor],
-                drop_modalities: Dict[str, float]=None
+                drop_modalities: Dict[str, float]=None,
+                save_embeddings: bool=False,
+                pid: str=None,
                 ) -> torch.Tensor:
         '''
         Combine models before the original classification head stage
@@ -133,6 +135,8 @@ class TIMMCollectionCombined(nn.Module):
         Arguments:
             x (Dict[str, torch.Tensor]): Images as key-value pairs. Matches with ModuleDict.
             drop_modalities (Dict[str, float]): Probability to drop a modality during training. 
+            save_embeddings (bool): If True, save embeddings.
+            pid (str): PID (path to save embeddings).
         '''
 
         embeddings = {}
@@ -148,6 +152,9 @@ class TIMMCollectionCombined(nn.Module):
                     continue
 
             embeddings[key] = encoder(x[key]).unsqueeze(1)
+            if save_embeddings:
+                log.info(f'save embedding to {pid[0]}_{key}.npy')
+                np.save(f'{pid[0]}_{key}.npy', embeddings[key].detach().cpu().numpy())
 
         match self.fusion_mode:
             case 'concatenate':

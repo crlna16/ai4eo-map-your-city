@@ -112,13 +112,13 @@ class MapYourCityModel(LightningModule):
     def forward(self, x):
         return self.backbone(x)
 
-    def step(self, batch, drop_modalities=None):
+    def step(self, batch, drop_modalities=None, save_embeddings=False):
         '''
         Any step processes batch to return loss and predictions
         '''
 
         x, y, pid = batch
-        prediction = self.backbone(x, drop_modalities=drop_modalities)
+        prediction = self.backbone(x, drop_modalities=drop_modalities, save_embeddings=save_embeddings, pid=pid)
         y_hat = torch.argmax(prediction, dim=-1)
 
         if self.loss_id == 'mse':
@@ -150,7 +150,7 @@ class MapYourCityModel(LightningModule):
         self.log('valid_metric', metric, on_epoch=True, on_step=False, sync_dist=True)
 
     def predict_step(self, batch, batch_idx):
-        _, _, y_hat, _, pid = self.step(batch, drop_modalities=self.drop_modalities)
+        _, _, y_hat, _, pid = self.step(batch, drop_modalities=self.drop_modalities, save_embeddings=True)
 
         self.valid_predictions['pid'].extend(list(pid))
         if len(y_hat.shape) == 1:
@@ -159,7 +159,7 @@ class MapYourCityModel(LightningModule):
             self.valid_predictions['predicted_label'].extend(list(y_hat.squeeze().cpu().numpy()))
 
     def test_step(self, batch, batch_idx):
-        loss, metric, y_hat, _, pid = self.step(batch, drop_modalities=None) # never drop during test
+        loss, metric, y_hat, _, pid = self.step(batch, drop_modalities=None, save_embeddings=True) # never drop during test
 
         self.test_predictions['pid'].extend(list(pid))
         if len(y_hat.shape) == 1:
