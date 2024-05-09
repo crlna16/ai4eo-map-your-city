@@ -106,7 +106,7 @@ class TIMMCollectionCombined(nn.Module):
                 #)
                 module_dict = {}
                 for key, value in self.models.items():
-                    module_dict[key] = nn.Linear(self.out_features, 1)
+                    module_dict[key] = nn.Linear(self.out_features_dict[key], 1)
 
                 self.fusion.attention = nn.ModuleDict(module_dict)
 

@@ -12,7 +12,7 @@ defaults:
 # this allows you to overwrite only specified parameters
 
 # name of the run determines folder name in logs
-name: "topview_streetview_05-04_B"
+name: "topview_streetview_05-04_D"
 
 seed: 404
 
@@ -31,6 +31,7 @@ model:
 datamodule:
   batch_size: 8
   dataset_options:
+    fold_key: random_stratified_labels_cities_noHUN
     dataset_options_streetview:
       transform: resize 
       img_file: street.jpg
