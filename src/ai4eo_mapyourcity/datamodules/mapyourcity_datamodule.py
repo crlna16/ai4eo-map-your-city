@@ -147,13 +147,10 @@ class CombinedDataset(Dataset):
     Dataset for two or three input modalities.
 
     Attributes:
-        use_topview (bool): If True, use topview (orthophoto) samples.
         topview_options (Dict): Dictionary with options to create topview dataset.
         topview_dataset (PhotoDataset): Topview dataset.
-        use_streetview (bool): If True, use streetview samples.
         streetview_options (Dict): Dictionary with options to create streetview dataset.
         streetview_dataset (PhotoDataset): Streetview dataset.
-        use_sentinel2 (bool): If True, use Sentinel-2 samples.
         sentinel2_options (Dict): Dictionary with options to create Sentinel-2 dataset.
         sentinel2_dataset (Sentinel2Dataset): Sentinel-2 dataset.
         sources (int): Number of modalities.
@@ -190,6 +187,14 @@ class CombinedDataset(Dataset):
         if 'streetview' in self.use_datasets:
             log.info('Setting up streetview dataset')
             self.datasets['streetview'] = PhotoDataset({**options, **options['dataset_options_streetview']},
+                                                   split)
+        if 'streetview0' in self.use_datasets:
+            log.info('Setting up streetview0 dataset')
+            self.datasets['streetview0'] = PhotoDataset({**options, **options['dataset_options_streetview0']},
+                                                   split)
+        if 'streetview1' in self.use_datasets:
+            log.info('Setting up streetview1 dataset')
+            self.datasets['streetview1'] = PhotoDataset({**options, **options['dataset_options_streetview1']},
                                                    split)
         if 'sentinel2' in self.use_datasets:
             log.info('Setting up sentinel2 dataset')
