@@ -12,7 +12,7 @@ defaults:
 # this allows you to overwrite only specified parameters
 
 # name of the run determines folder name in logs
-name: "multimodal_swin_05-09_A"
+name: "multimodal_swin_05-12_A"
 
 seed: 404
 
@@ -23,22 +23,22 @@ model:
   backbone:
     fusion_mode: attention2
     model_id:
-      topview: swinv2_tiny_window16_256.ms_in1k
-      streetview: swinv2_tiny_window16_256.ms_in1k
-      sentinel2: swinv2_tiny_window16_256.ms_in1k
+      topview: swinv2_small_window16_256.ms_in1k
+      streetview: swinv2_small_window16_256.ms_in1k
+      sentinel2: swinv2_small_window16_256.ms_in1k
     out_features:
       topview: 768
       streetview: 768
       sentinel2: 768
 
 datamodule:
-  batch_size: 32 
+  batch_size: 16
   dataset_options:
     fold_key: random_stratified_labels_cities_noHUN
     dataset_options_streetview:
-      transform: default
-      img_file: street.jpg
+      transform: resize
+      img_file: street_patch_00.jpg
     dataset_options_topview:
-      transform: default 
+      transform: resize
     dataset_options_sentinel2:
       transform: patch
