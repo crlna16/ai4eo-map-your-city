@@ -1,0 +1,18 @@
+name: Schedule Make Public
+
+on:
+  schedule:
+    # Runs at 00:00 on a specified date (change the date accordingly)
+    - cron: '0 0 1 1 *'  # This example sets it to run at 00:00 on January 1st (UTC) annually
+
+jobs:
+  make-public:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Make repository public
+        run: |
+          curl -X PATCH -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ github.repository }} \
+          -d '{"private": false}'
+
