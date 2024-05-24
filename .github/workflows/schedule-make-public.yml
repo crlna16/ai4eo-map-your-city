@@ -3,7 +3,7 @@ name: Schedule Make Public
 on:
   schedule:
     # Runs at 00:00 on a specified date (change the date accordingly)
-    - cron: '0 0 1 1 *'  # This example sets it to run at 00:00 on January 1st (UTC) annually
+    - cron: '0 2 15 7 *'  # This example sets it to run at 00:00 on January 1st (UTC) annually
 
 jobs:
   make-public:
