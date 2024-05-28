@@ -12,7 +12,7 @@ defaults:
 # this allows you to overwrite only specified parameters
 
 # name of the run determines folder name in logs
-name: "topmodal_swin_05-14_A"
+name: "topmodal_swin_05-24_A"
 
 seed: 404
 
@@ -20,18 +20,18 @@ model:
   weighted_loss: True
   backbone:
     fusion_mode: attention2
-    model_id: 
-      topview: swinv2_base_window12to24_192to384.ms_in22k_ft_in1k
-      sentinel2: swinv2_base_window12_192.ms_in22k
+    model_id:
+      topview: swinv2_small_window16_256.ms_in1k
+      sentinel2: swinv2_small_window16_256.ms_in1k
     out_features:
-      topview: 1024
-      sentinel2: 1024
+      topview: 768
+      sentinel2: 768
 
 datamodule:
   batch_size: 16
   dataset_options:
     fold_key: random_stratified_labels_cities_noHUN
     dataset_options_topview:
-      transform: resize 
+      transform: resize
     dataset_options_sentinel2:
       transform: patch

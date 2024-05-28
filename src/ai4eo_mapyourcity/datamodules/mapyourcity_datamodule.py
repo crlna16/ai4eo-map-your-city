@@ -263,8 +263,14 @@ class PhotoDataset(MapYourCityDataset):
             case _:
                 raise ValueError('Invalid choice:', options['transform'])
 
+        if options['img_file'].startswith('ortho'):
+            pvertical = 0.5
+        else:
+            pvertical = 0.0
+
         trafo0 = [v2.ToImage()]
         trafoA = [v2.RandomHorizontalFlip(p=0.5),
+                  v2.RandomVerticalFlip(p=pvertical),
                   v2.ColorJitter(brightness=(0.6, 1.4),
                                  contrast=(0.6, 1.4),
                                  saturation=(0.6, 1.4),
