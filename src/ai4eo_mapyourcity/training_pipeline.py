@@ -92,6 +92,7 @@ def train(config: DictConfig) -> Optional[float]:
         train_dataloader = datamodule.train_dataloader()
         valid_dataloader = datamodule.valid_dataloader()
         trainer.fit(model=model,
+                    ckpt_path=config.ckpt_path,
                     train_dataloaders=train_dataloader, 
                     val_dataloaders=valid_dataloader)
 

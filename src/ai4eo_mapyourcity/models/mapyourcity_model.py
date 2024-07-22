@@ -62,6 +62,9 @@ class MapYourCityModel(LightningModule):
         self.drop_modalities = drop_modalities
         self.loss_id = loss_id
 
+        # to enable load from ckpt for fine-tuning
+        self.strict_loading = False
+
         # metrics
         self.validation_metric = validation_metric
 
